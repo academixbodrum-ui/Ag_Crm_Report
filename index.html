@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="CRM Takip ve İstatistik Rapor Sistemi - CSV verilerinden otomatik güncelleme ile müşteri takibi">
+    <title>CRM Takip & İstatistik</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/table.css">
+    <link rel="stylesheet" href="css/modal.css">
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                            <path d="M2 17l10 5 10-5" />
+                            <path d="M2 12l10 5 10-5" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">CRM Rapor</span>
+                </div>
+                <button id="sidebar-toggle" style="
+                    background: transparent; border: none; color: var(--text-tertiary);
+                    cursor: pointer; padding: 4px; display: flex; align-items: center;
+                " title="Menüyü daralt/aç">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="9" y1="3" x2="9" y2="21"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="sidebar-category">ANALİZ</div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="tracking" id="nav-tracking">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="21" x2="9" y2="9" />
+                </svg>
+                <span>CRM Takip</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-category">İSTATİSTİKLER</div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item" data-page="dash-general" id="nav-dash-general">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                <span>Genel Bakış</span>
+            </a>
+            <a href="#" class="nav-item" data-page="dash-counsellor" id="nav-dash-counsellor">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <span>Counsellor</span>
+            </a>
+            <a href="#" class="nav-item" data-page="dash-school" id="nav-dash-school">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                </svg>
+                <span>School</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-category">DOSYA İŞLEMLERİ</div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item" data-page="upload" id="nav-upload">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span>CSV Yükle</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-category">SİSTEM</div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item" data-page="system" id="nav-system">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                <span>Program Tanımı</span>
+            </a>
+            <a href="#" class="nav-item" data-page="currency" id="nav-currency">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1v22m11-18H1M1 21h22" />
+                    <circle cx="12" cy="12" r="7" />
+                </svg>
+                <span>Kur Ayarları</span>
+            </a>
+            <a href="#" class="nav-item" data-page="status-rules" id="nav-status-rules">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                </svg>
+                <span>Durum Kuralları</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="upload-status" id="upload-status">
+                <div class="status-dot"></div>
+                <span>Veri yüklenmedi</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <!-- Page: Upload -->
+        <section class="page" id="page-upload" style="display:none;">
+            <div class="page-header">
+                <h1>CSV Rapor Yükleme</h1>
+                <p class="page-subtitle">CRM raporunuzu yükleyin. Her yüklemede veriler otomatik güncellenir, takip
+                    bilgileriniz korunur.</p>
+            </div>
+            <div class="upload-area" id="upload-area">
+                <div class="upload-dropzone" id="upload-dropzone">
+                    <div class="upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                    </div>
+                    <h3>CSV dosyanızı sürükleyip bırakın</h3>
+                    <p>veya dosya seçmek için tıklayın</p>
+                    <div class="upload-specs">
+                        <span class="spec-badge">Delimiter: ;</span>
+                        <span class="spec-badge">Encoding: Latin-1</span>
+                        <span class="spec-badge">Tarih: dd.MM.yyyy</span>
+                    </div>
+                    <input type="file" id="csv-file-input" accept=".csv" hidden>
+                </div>
+                <!-- Upload Progress -->
+                <div class="upload-progress" id="upload-progress" style="display:none;">
+                    <div class="progress-header">
+                        <span class="progress-title">İşleniyor...</span>
+                        <span class="progress-percent" id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-details" id="progress-details"></div>
+                </div>
+                <!-- Upload Result -->
+                <div class="upload-result" id="upload-result" style="display:none;"></div>
+            </div>
+            <!-- Upload History -->
+            <div class="upload-history" id="upload-history-section">
+                <h2>Yükleme Geçmişi</h2>
+                <div class="history-list" id="upload-history-list"></div>
+            </div>
+        </section>
+
+        <!-- Page: Tracking -->
+        <section class="page" id="page-tracking" style="display:none;">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <h1>CRM Takip</h1>
+                    <span class="record-count" id="tracking-record-count">0 kayıt</span>
+                </div>
+                <div class="page-header-right">
+                    <button class="btn btn-outline" id="btn-export-csv">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Dışa Aktar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="filters-bar" id="filters-bar">
+                <div class="filter-row">
+                    <div class="search-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="filter-search" placeholder="İsim, Okul, Program veya Danışman ara...">
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-select-wrapper">
+                            <label>Status</label>
+                            <div class="status-multiselect" id="status-multiselect">
+                                <button type="button" class="status-multiselect-btn" id="status-multiselect-btn"
+                                    onclick="toggleStatusFilter()">
+                                    Durum Seç ▾
+                                </button>
+                                <div class="status-multiselect-dropdown" id="status-multiselect-dropdown"
+                                    style="display:none;">
+                                    <label class="status-checkbox-item"><input type="checkbox" value="Process"
+                                            onchange="applyStatusFilter()"> Process</label>
+                                    <label class="status-checkbox-item"><input type="checkbox" value="Visa"
+                                            onchange="applyStatusFilter()"> Visa</label>
+                                    <label class="status-checkbox-item"><input type="checkbox" value="Awaiting Payment"
+                                            onchange="applyStatusFilter()"> Awaiting Payment</label>
+                                    <label class="status-checkbox-item"><input type="checkbox" value="School Payment"
+                                            onchange="applyStatusFilter()"> School Payment</label>
+                                    <label class="status-checkbox-item"><input type="checkbox" value="Commission"
+                                            onchange="applyStatusFilter()"> Commission</label>
+                                    <label class="status-checkbox-item"><input type="checkbox"
+                                            value="Commission (Taksim)" onchange="applyStatusFilter()"> Commission
+                                        (Taksim)</label>
+                                    <label class="status-checkbox-item"><input type="checkbox" value="Completed"
+                                            onchange="applyStatusFilter()"> Completed</label>
+                                    <label class="status-checkbox-item"><input type="checkbox" value="Cancelled"
+                                            onchange="applyStatusFilter()"> Cancelled</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filter-select-wrapper">
+                            <label>Counsellor</label>
+                            <select id="filter-employee">
+                                <option value="">Tümü</option>
+                            </select>
+                        </div>
+                        <div class="filter-select-wrapper">
+                            <label>Program Tanımı</label>
+                            <select id="filter-program-type">
+                                <option value="">Tümü</option>
+                                <option value="Akademik">Akademik</option>
+                                <option value="Dil">Dil</option>
+                                <option value="Diğer">Diğer</option>
+                            </select>
+                        </div>
+                        <div class="filter-select-wrapper">
+                            <label>Program</label>
+                            <select id="filter-program">
+                                <option value="">Tümü</option>
+                            </select>
+                        </div>
+                        <div class="filter-select-wrapper">
+                            <label>Currency</label>
+                            <select id="filter-currency">
+                                <option value="">Tümü</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-row filter-row-secondary">
+                    <div class="filter-date-group">
+                        <label>Record Date</label>
+                        <input type="date" id="filter-record-date-from" placeholder="Başlangıç" onclick="this.showPicker()">
+                        <span class="date-separator">–</span>
+                        <input type="date" id="filter-record-date-to" placeholder="Bitiş" onclick="this.showPicker()">
+                    </div>
+                    <div class="filter-date-group">
+                        <label>Program Start</label>
+                        <input type="date" id="filter-program-date-from" placeholder="Başlangıç" onclick="this.showPicker()">
+                        <span class="date-separator">–</span>
+                        <input type="date" id="filter-program-date-to" placeholder="Bitiş" onclick="this.showPicker()">
+                    </div>
+                    <label class="filter-checkbox toggle-extra-cols">
+                        <input type="checkbox" id="toggle-detailed-view">
+                        <span>Detaylı Görünüm</span>
+                    </label>
+                    <label class="filter-checkbox toggle-bonus-cols">
+                        <input type="checkbox" id="toggle-bonus-view">
+                        <span>Danışman Prim</span>
+                    </label>
+                    <button class="btn btn-ghost btn-sm" id="btn-clear-filters">Filtreleri Temizle</button>
+            <div class="table-container" id="tracking-table-container">
+                <table class="data-table" id="tracking-table">
+                    <thead>
+                        <tr>
+                            <th class="th-sticky th-name" data-sort="Name">Ad Soyad</th>
+                            <th class="th-school" data-sort="School">Okul</th>
+                            <th class="th-date" data-sort="Record Date">Kayıt Tarihi</th>
+                            <th class="th-status" data-sort="status">Durum</th>
+                            <th class="th-date" data-sort="Program Start Date">Program Başlangıç</th>
+                            <th class="col-extra" data-sort="Duration">Süre</th>
+                            <th class="th-number col-extra" data-sort="Total Debt">Toplam Borç</th>
+                            <th class="th-number" data-sort="Paid">Ödenen</th>
+                            <th class="th-number col-extra" data-sort="Refund">Refund</th>
+                            <th class="th-number col-extra" data-sort="Tuition">Tuition</th>
+                            <th class="th-number col-extra" data-sort="Cancellation">Cancellation</th>
+                            <th class="th-number" data-sort="Balance">Balance</th>
+                            <th class="th-number col-extra" data-sort="Comm">Comm</th>
+                            <th class="th-number col-extra" data-sort="Discount">Discount</th>
+                            <th class="th-currency" data-sort="Currency">Kur</th>
+                            <th class="col-extra" data-sort="Represantative">Represantative</th>
+                            <th class="th-number col-extra" data-sort="Represantative Comm">Represantative Comm</th>
+                            <th class="th-number col-extra" data-sort="School Balance">School Balance</th>
+                            <th class="th-number td-total-comm" data-sort="total_commission">Toplam Komisyon</th>
+                            <th class="th-number col-bonus col-bonus-separator" data-sort="deposit_bonus">Depozito Primi</th>
+                            <th class="col-bonus">Depozito Primi Durumu</th>
+                            <th class="th-number col-bonus" data-sort="consultant_bonus">Danışman Primi</th>
+                            <th class="col-bonus">Danışman Primi Durumu</th>
+                            <th class="th-number col-bonus" data-sort="remaining_bonus">Kalan Prim</th>
+                            <th class="th-notes">Notlar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tracking-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div class="pagination" id="tracking-pagination">
+                <div class="pagination-info" id="pagination-info"></div>
+                <div class="pagination-controls">
+                    <button class="btn btn-ghost btn-sm" id="btn-prev-page" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+                    <span id="pagination-pages"></span>
+                    <button class="btn btn-ghost btn-sm" id="btn-next-page" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="pagination-size">
+                    <select id="page-size-select">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="250">250</option>
+                    </select>
+                    <span>/ sayfa</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: Dashboard -->
+        <section class="page" id="page-dashboard" style="display:none;">
+            <div class="page-header">
+                <h1>CRM İstatistik</h1>
+                <p class="page-subtitle">Genel bakış ve pivot analizler</p>
+            </div>
+
+            <!-- Dashboard Filters -->
+            <div class="filters-bar" style="margin-bottom: 24px;">
+                <div class="filter-row">
+                    <div class="filter-select-wrapper">
+                        <label>Zaman Filtresi</label>
+                        <select id="dash-time-filter">
+                            <option value="all">Tüm Zamanlar</option>
+                            <option value="yearly">Yıllık</option>
+                            <option value="monthly">Aylık</option>
+                        </select>
+                    </div>
+                    <div class="filter-select-wrapper" id="dash-year-wrapper" style="display:none;">
+                        <label>Yıl</label>
+                        <select id="dash-year">
+                        </select>
+                    </div>
+                    <div class="filter-select-wrapper" id="dash-month-wrapper" style="display:none;">
+                        <label>Ay</label>
+                        <select id="dash-month">
+                            <option value="1">Ocak</option>
+                            <option value="2">Şubat</option>
+                            <option value="3">Mart</option>
+                            <option value="4">Nisan</option>
+                            <option value="5">Mayıs</option>
+                            <option value="6">Haziran</option>
+                            <option value="7">Temmuz</option>
+                            <option value="8">Ağustos</option>
+                            <option value="9">Eylül</option>
+                            <option value="10">Ekim</option>
+                            <option value="11">Kasım</option>
+                            <option value="12">Aralık</option>
+                        </select>
+                    </div>
+                    <div class="filter-select-wrapper">
+                        <label>Employee</label>
+                        <select id="dash-employee-filter">
+                            <option value="">Tüm Çalışanlar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid" id="kpi-grid">
+                <div class="kpi-card" id="kpi-total">
+                    <div class="kpi-icon kpi-icon-blue">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-total-value">0</span>
+                        <span class="kpi-label">Toplam Kayıt (Aktif)</span>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-tuition">
+                    <div class="kpi-icon kpi-icon-green">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23" />
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-tuition-value">0</span>
+                        <span class="kpi-label">Toplam Tuition</span>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-paid">
+                    <div class="kpi-icon kpi-icon-emerald">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-paid-value">0</span>
+                        <span class="kpi-label">Toplam Paid</span>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-balance">
+                    <div class="kpi-icon kpi-icon-amber">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-balance-value">0</span>
+                        <span class="kpi-label">Toplam Balance</span>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-avg-tuition">
+                    <div class="kpi-icon kpi-icon-purple">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                            <path d="M22 12A10 10 0 0 0 12 2v10z" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-avg-tuition-value">0</span>
+                        <span class="kpi-label">Ort. Tuition / Kayıt</span>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-missing">
+                    <div class="kpi-icon kpi-icon-red">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-missing-value">0</span>
+                        <span class="kpi-label">Missing Kayıt</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Distribution -->
+            <div class="dashboard-section">
+                <h2 class="section-title">Durum Dağılımı</h2>
+                <div class="status-distribution" id="status-distribution"></div>
+            </div>
+
+            <!-- Pivot Tables -->
+            <div class="dashboard-grid">
+                <div class="dashboard-section dashboard-section-full">
+                    <h2 class="section-title">Employee Bazında</h2>
+                    <div class="pivot-table-container" id="pivot-employee"></div>
+                </div>
+                <div class="dashboard-section dashboard-section-half">
+                    <h2 class="section-title">Counsellor Bazında</h2>
+                    <div class="pivot-table-container" id="pivot-counsellor"></div>
+                </div>
+                <div class="dashboard-section dashboard-section-half">
+                    <h2 class="section-title">School Bazında</h2>
+                    <div class="pivot-table-container" id="pivot-school-detailed"></div>
+                </div>
+                <div class="dashboard-section">
+                    <h2 class="section-title">Program Bazında</h2>
+                    <div class="pivot-table-container" id="pivot-program"></div>
+                </div>
+                <div class="dashboard-section">
+                    <h2 class="section-title">School / School Center Bazında</h2>
+                    <div class="pivot-table-container" id="pivot-school"></div>
+                </div>
+                <div class="dashboard-section">
+                    <h2 class="section-title">Currency Bazında</h2>
+                    <div class="pivot-table-container" id="pivot-currency"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Page: System -->
+        <section class="page" id="page-system" style="display:none;">
+            <div class="page-header">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <div>
+                        <h1>Sistem Ayarları</h1>
+                        <p class="page-subtitle">Program ve döviz tanımlamalarını bu ekrandan yönetebilirsiniz.</p>
+                    </div>
+                    <div class="page-tabs" style="margin: 0;">
+                        <button class="tab-btn active" data-tab="tab-programs" onclick="switchSystemTab('tab-programs')">Program Tanımı</button>
+                        <button class="tab-btn" data-tab="tab-currency" onclick="switchSystemTab('tab-currency')">Kur Ayarları</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Programs -->
+            <div id="tab-programs" class="system-tab-content">
+                <div class="system-section">
+                    <div class="system-card">
+                        <div class="system-card-header">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                                <div>
+                                    <h2>Program Sınıflandırma</h2>
+                                    <p>Programları uygun kategorilere (Akademik, Dil, Diğer) atayın.</p>
+                                </div>
+                            <div class="search-box" style="max-width: 300px; margin-bottom: 0;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" id="program-type-search" placeholder="Program ara..."
+                                    oninput="if(window.systemManager) window.systemManager.filterList(this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="system-card-actions">
+                        <button class="btn btn-primary btn-sm" id="btn-save-program-types"
+                            onclick="saveAllProgramTypes()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
+                            </svg>
+                            Kaydet
+                        </button>
+                    </div>
+                    <div class="program-type-list" id="program-type-list">
+                        <div style="text-align:center; padding: 40px; color: var(--text-tertiary);">
+                            Yükleniyor...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Currency -->
+            <div id="tab-currency" class="system-tab-content" style="display:none;">
+                <div class="system-section">
+                    <div class="system-card">
+                        <div class="system-card-header">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                                <div>
+                                    <h2>Kur / Döviz Tanımları</h2>
+                                    <p>Sistemdeki döviz birimleri için sembol ve kur ayarlarını yapın.</p>
+                                </div>
+                                <div class="search-box" style="max-width: 300px; margin-bottom: 0;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    </svg>
+                                    <input type="text" id="currency-search" placeholder="Döviz ara..."
+                                        oninput="if(window.systemManager) window.systemManager.filterCurrencyList(this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="system-card-actions">
+                            <button class="btn btn-primary btn-sm" id="btn-save-currencies"
+                                onclick="saveAllCurrencies()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                    <polyline points="17 21 17 13 7 13 7 21" />
+                                    <polyline points="7 3 7 8 15 8" />
+                                </svg>
+                                Kaydet
+                            </button>
+                        </div>
+                        <div class="currency-list-container" id="currency-list">
+                            <div style="text-align:center; padding: 40px; color: var(--text-tertiary);">
+                                Yükleniyor...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Page: Status Rules -->
+        <section class="page" id="page-status-rules" style="display:none;">
+            <div class="page-header">
+                <h1>Durum Kuralları Ayarları</h1>
+                <p class="page-subtitle">Her durum tipi için görsel ve mantıksal kuralları belirleyin.</p>
+            </div>
+
+
+
+                <!-- Visual Rules Card -->
+                <div class="system-card" style="margin-top: 2rem;">
+                    <div class="system-card-header">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <h2>Kural Matrisi</h2>
+                                <p>Belirli koşullara uyan satırları renklendirin.</p>
+                            </div>
+                            <button class="btn btn-outline btn-sm" id="btn-add-visual-rule"
+                                onclick="addVisualRule()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Kural Oluştur
+                            </button>
+                        </div>
+                    </div>
+                    <div class="system-card-actions" style="margin-bottom: 1rem;">
+                        <button class="btn btn-primary btn-sm" id="btn-save-visual-rules"
+                            onclick="saveAllVisualRules()">
+                            Kaydet
+                        </button>
+                    </div>
+                    <div class="visual-rules-list" id="visual-rules-list">
+                        <div style="text-align:center; padding: 40px; color: var(--text-tertiary);">
+                            Kural bulunamadı. "Kural Oluştur" butonu ile yeni kural ekleyebilirsiniz.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detail-modal" style="display:none;">
+        <div class="modal-drawer">
+            <div class="modal-header">
+                <h2 id="modal-title">Kayıt Detayı</h2>
+                <button class="btn-close" id="modal-close">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/db.js?v=10"></script>
+    <script src="js/csv-parser.js?v=10"></script>
+    <script src="js/upload.js?v=10"></script>
+    <script src="js/tracking.js?v=10"></script>
+    <script src="js/system.js?v=10"></script>
+    <script src="js/dashboard.js?v=10"></script>
+    <script src="js/status-rules.js?v=10"></script>
+    <script src="js/app.js?v=10"></script>
+</body>
+
+</html>

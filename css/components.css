@@ -1,0 +1,840 @@
+/* ==========================================
+   UPLOAD PAGE COMPONENTS
+   ========================================== */
+
+.upload-area {
+    max-width: 700px;
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--border-secondary);
+    border-radius: var(--radius-xl);
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    background: var(--bg-card);
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-dropzone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--accent-blue-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.dragover {
+    border-color: var(--accent-blue);
+    background: var(--bg-card-hover);
+}
+
+.upload-dropzone:hover::before,
+.upload-dropzone.dragover::before {
+    opacity: 1;
+}
+
+.upload-dropzone .upload-icon {
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+    transition: color var(--transition-normal), transform var(--transition-normal);
+    position: relative;
+    z-index: 1;
+}
+
+.upload-dropzone:hover .upload-icon {
+    color: var(--accent-blue);
+    transform: translateY(-4px);
+}
+
+.upload-dropzone h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+.upload-dropzone p {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    position: relative;
+    z-index: 1;
+}
+
+.upload-specs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.spec-badge {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+/* Upload Progress */
+.upload-progress {
+    margin-top: 24px;
+    padding: 24px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-primary);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.progress-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.progress-percent {
+    color: var(--accent-blue-light);
+    font-weight: 700;
+}
+
+.progress-bar {
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-details {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+/* Upload Result */
+.upload-result {
+    margin-top: 24px;
+    padding: 24px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-primary);
+}
+
+.upload-result.success {
+    border-color: var(--accent-green);
+}
+
+.upload-result.error {
+    border-color: var(--accent-red);
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.result-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.result-icon.success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-green);
+}
+
+.result-icon.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--accent-red);
+}
+
+.result-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.result-stat {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.result-stat .stat-value {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.result-stat .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Upload History */
+.upload-history {
+    margin-top: 40px;
+}
+
+.upload-history h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-primary);
+    font-size: 0.85rem;
+}
+
+.history-item .history-date {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.history-item .history-info {
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 16px;
+}
+
+.history-item .history-badge {
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--accent-blue-glow);
+    color: var(--accent-blue-light);
+}
+
+/* ==========================================
+   FILTER / INPUT COMPONENTS
+   ========================================== */
+
+.filters-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+.filter-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.filter-row-secondary {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.search-box {
+    flex: 1;
+    min-width: 250px;
+    position: relative;
+}
+
+.search-box svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 12px 10px 38px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1.0rem;
+    transition: border-color var(--transition-fast);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px var(--accent-blue-glow);
+}
+
+.filter-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-select-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-select-wrapper label {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-select-wrapper select,
+.filter-date-group input {
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    min-width: 120px;
+    transition: border-color var(--transition-fast);
+}
+
+.filter-select-wrapper select:focus,
+.filter-date-group input:focus,
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* Aktif Filtre Stili */
+.filter-active {
+    border-color: var(--accent-blue) !important;
+}
+
+.filter-date-group {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.filter-date-group label {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.filter-date-group input {
+    width: 140px;
+}
+
+.date-separator {
+    color: var(--text-tertiary);
+    padding-bottom: 8px;
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+.filter-checkbox:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.filter-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+}
+
+/* Status Multi-Select Dropdown */
+.status-multiselect {
+    position: relative;
+}
+
+.status-multiselect-btn {
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    min-width: 120px;
+    text-align: left;
+    transition: border-color var(--transition-fast);
+}
+
+.status-multiselect-btn:hover,
+.status-multiselect-btn:focus {
+    border-color: var(--accent-blue);
+    outline: none;
+}
+
+.status-multiselect-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    min-width: 200px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    padding: 6px;
+    margin-top: 4px;
+    box-shadow: var(--shadow-lg);
+    animation: dropdownIn 0.15s ease;
+}
+
+.status-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    transition: background var(--transition-fast);
+}
+
+.status-checkbox-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.status-checkbox-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+}
+
+/* ==========================================
+   STATUS BADGES
+   ========================================== */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.status-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-badge[data-status="Process"] {
+    background: rgba(34, 212, 191, 0.12);
+    color: #22d4bf;
+}
+
+.status-badge[data-status="Process"]::before {
+    background: #22d4bf;
+}
+
+.status-badge[data-status="Visa"] {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+
+.status-badge[data-status="Visa"]::before {
+    background: #f59e0b;
+}
+
+.status-badge[data-status="Awaiting Payment"] {
+    background: rgba(236, 72, 153, 0.12);
+    color: #ec4899;
+}
+
+.status-badge[data-status="Awaiting Payment"]::before {
+    background: #ec4899;
+}
+
+.status-badge[data-status="School Payment"] {
+    background: rgba(168, 85, 247, 0.12);
+    color: #a855f7;
+}
+
+.status-badge[data-status="School Payment"]::before {
+    background: #a855f7;
+}
+
+.status-badge[data-status="Commission"] {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+.status-badge[data-status="Commission"]::before {
+    background: #22c55e;
+}
+
+.status-badge[data-status="Commission (Taksim)"] {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.status-badge[data-status="Commission (Taksim)"]::before {
+    background: #10b981;
+}
+
+.status-badge[data-status="Completed"] {
+    background: rgba(96, 165, 250, 0.12);
+    color: #60a5fa;
+}
+
+.status-badge[data-status="Completed"]::before {
+    background: #60a5fa;
+}
+
+.status-badge[data-status="Cancelled"] {
+    background: rgba(255, 255, 255, 0.05);
+    color: #888888;
+}
+
+.status-badge[data-status="Cancelled"]::before {
+    background: #888888;
+}
+
+.status-badge:hover {
+    filter: brightness(1.2);
+    transform: scale(1.05);
+}
+
+/* Status Dropdown */
+.status-dropdown {
+    position: absolute;
+    z-index: 1000;
+    background: var(--bg-card);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    padding: 6px;
+    box-shadow: var(--shadow-lg);
+    min-width: 180px;
+    animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.status-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    transition: background var(--transition-fast);
+}
+
+.status-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.status-dropdown-item .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* System Page & Tabs */
+.page-tabs {
+    display: flex;
+    gap: 8px;
+    background: var(--bg-tertiary);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-primary);
+}
+
+.tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    font-family: inherit;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+    background: var(--bg-card);
+    color: var(--accent-blue-light);
+    box-shadow: var(--shadow-sm);
+}
+
+.system-tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.system-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-top: 20px;
+}
+
+.system-card-header {
+    margin-bottom: 24px;
+}
+
+.system-card-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.system-card-header p {
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+.system-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+.program-type-select {
+    width: 100%;
+    padding: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+/* ==========================================
+   STATUS-BASED ROW HIGHLIGHTING
+   ========================================== */
+
+/* 1. Cancelled: Siyah üzerine Gri ve silik */
+tr[data-row-status="Cancelled"],
+tr[data-row-status="Cancelled"] td.td-name {
+    background-color: #000000 !important;
+}
+
+tr[data-row-status="Cancelled"] td {
+    color: #888888 !important;
+    opacity: 0.5;
+}
+
+/* 2. Process: Renk yok (Varsayılan koyu) */
+tr[data-row-status="Process"] td.td-name {
+    background-color: var(--bg-card) !important;
+}
+
+tr[data-row-status="Process"] {
+    background-color: transparent !important;
+}
+
+/* 3. Visa: Turuncu */
+tr[data-row-status="Visa"] {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+tr[data-row-status="Visa"] td.td-name {
+    background-color: color-mix(in srgb, #f59e0b 15%, var(--bg-card)) !important;
+}
+
+/* 4. Awaiting Payment: Pembe */
+tr[data-row-status="Awaiting Payment"] {
+    background-color: rgba(236, 72, 153, 0.08) !important;
+}
+
+tr[data-row-status="Awaiting Payment"] td.td-name {
+    background-color: color-mix(in srgb, #ec4899 8%, var(--bg-card)) !important;
+}
+
+/* 5. School Payment: Mor */
+tr[data-row-status="School Payment"] {
+    background-color: rgba(168, 85, 247, 0.08) !important;
+}
+
+tr[data-row-status="School Payment"] td.td-name {
+    background-color: color-mix(in srgb, #a855f7 8%, var(--bg-card)) !important;
+}
+
+/* 6. Commission: Yeşil */
+tr[data-row-status="Commission"] {
+    background-color: rgba(34, 197, 94, 0.08) !important;
+}
+
+tr[data-row-status="Commission"] td.td-name {
+    background-color: color-mix(in srgb, #22c55e 8%, var(--bg-card)) !important;
+}
+
+/* 7. Commission (Taksim): Canlı Yeşil */
+tr[data-row-status="Commission (Taksim)"] {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+tr[data-row-status="Commission (Taksim)"] td.td-name {
+    background-color: color-mix(in srgb, #10b981 12%, var(--bg-card)) !important;
+}
+
+/* 8. Completed: Açık Mavi */
+tr[data-row-status="Completed"] {
+    background-color: rgba(96, 165, 250, 0.15) !important;
+}
+
+tr[data-row-status="Completed"] td.td-name {
+    background-color: color-mix(in srgb, #60a5fa 15%, var(--bg-card)) !important;
+}
+
+/* Hover Efekti (Tüm Durumlar İçin) */
+tr:hover td {
+    filter: brightness(1.2);
+}
+
+tr:hover td.td-name {
+    background-color: var(--bg-card-hover) !important;
+    filter: brightness(1.1);
+}
+
+/* ==========================================
+   STATUS RULES MATRIX
+   ========================================== */
+
+#status-rules-matrix {
+    max-height: 600px;
+    overflow: auto;
+}
+
+#status-rules-matrix thead th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-tertiary);
+    z-index: 30;
+    border-bottom: 1px solid var(--border-primary);
+    padding: 10px;
+}
+
+#status-rules-matrix thead tr:last-child th {
+    top: 38px; /* Adjustment for double header */
+}
+
+#status-rules-matrix td:first-child,
+#status-rules-matrix th:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--bg-card);
+    z-index: 35;
+    border-right: 2px solid var(--border-primary);
+    min-width: 150px;
+}
+
+#status-rules-matrix th:first-child {
+    z-index: 40;
+    background: var(--bg-tertiary);
+}
+
+#status-rules-matrix input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Required field highlighting in Modal */
+.modal-form-group.field-required label::after {
+    content: " *";
+    color: var(--accent-red);
+}
+
+.modal-form-group.field-required input,
+.modal-form-group.field-required select,
+.modal-form-group.field-required textarea {
+    border-left: 3px solid var(--accent-red);
+}

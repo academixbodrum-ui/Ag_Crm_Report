@@ -1,0 +1,378 @@
+/* ==========================================
+   DATA TABLE
+   ========================================== */
+
+.table-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    overflow: auto;
+    max-height: calc(100vh - 320px);
+    position: relative;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+/* Extra Columns Toggle */
+.col-extra {
+    display: none !important;
+}
+
+.table-container.show-extra .col-extra {
+    display: table-cell !important;
+}
+
+.col-bonus {
+    display: none !important;
+}
+
+.table-container.show-bonus .col-bonus {
+    display: table-cell !important;
+}
+
+.col-bonus {
+    text-align: center !important;
+}
+
+.col-bonus-separator {
+    border-left: 2px solid var(--accent-blue) !important;
+}
+
+.data-table td.td-remaining-bonus {
+    color: var(--accent-amber-light);
+    font-weight: 700;
+}
+
+.data-table select,
+.data-table input[type="number"] {
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.col-bonus input[type="number"] {
+    min-width: 80px;
+}
+
+.data-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table th {
+    padding: 8px 10px;
+    text-align: center;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--transition-fast);
+    position: relative;
+    white-space: normal;
+    vertical-align: middle;
+    line-height: 1.2;
+}
+
+.data-table th:hover {
+    color: var(--text-primary);
+}
+
+.data-table th.sorted-asc::after,
+.data-table th.sorted-desc::after {
+    content: '';
+    display: inline-block;
+    margin-left: 6px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+.data-table th.sorted-asc::after {
+    border-bottom: 5px solid var(--accent-blue);
+}
+
+.data-table th.sorted-desc::after {
+    border-top: 5px solid var(--accent-blue);
+}
+
+.data-table th.th-number {
+    text-align: right;
+}
+
+.data-table th.th-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 11;
+}
+
+
+
+.data-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background var(--transition-fast);
+}
+
+.data-table td.td-name {
+    position: sticky;
+    left: 0;
+    background: var(--bg-card);
+    z-index: 5;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Column Widths */
+.data-table th.th-name,
+.data-table td.td-name {
+    width: 120px;
+    min-width: 120px;
+}
+
+.data-table th.th-school,
+.data-table td.td-school {
+    width: 120px;
+    min-width: 120px;
+    white-space: normal;
+}
+
+.data-table th.th-date,
+.data-table td.td-date {
+    width: 90px;
+    min-width: 90px;
+    text-align: center;
+}
+
+.data-table th.th-status,
+.data-table td.td-status {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+}
+
+.data-table th.th-currency,
+.data-table td.td-currency {
+    width: 60px;
+    min-width: 60px;
+    text-align: center;
+}
+
+.data-table th.th-number,
+.data-table td.td-number {
+    width: 95px;
+    min-width: 95px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.data-table td.td-total-comm {
+    width: 90px;
+    min-width: 90px;
+    font-weight: 700;
+}
+
+/* Extra and Bonus Columns */
+.col-extra {
+    width: 100px;
+    min-width: 100px;
+}
+
+.col-bonus {
+    width: 100px;
+    min-width: 100px;
+}
+
+.data-table th.th-notes,
+.data-table td.td-notes {
+    width: 250px;
+    min-width: 200px;
+}
+
+.data-table td.td-email {
+    max-width: 180px;
+}
+
+.data-table tbody tr {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.data-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.data-table tbody tr:hover td.td-name {
+    background: var(--bg-card-hover);
+}
+
+.data-table tbody tr.row-missing {
+    opacity: 0.5;
+}
+
+.data-table tbody tr.row-missing td {
+    text-decoration: line-through;
+    text-decoration-color: var(--text-muted);
+}
+
+/* Inline editable notes */
+.inline-note {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    width: 150px;
+    transition: all var(--transition-fast);
+    resize: none;
+    height: 28px;
+    overflow: hidden;
+}
+
+.inline-note:hover {
+    border-color: var(--border-secondary);
+}
+
+.inline-note:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: var(--bg-input);
+    box-shadow: 0 0 0 2px var(--accent-blue-glow);
+    height: 60px;
+    overflow: auto;
+}
+
+/* Inline date input */
+.inline-date {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    width: 130px;
+    transition: all var(--transition-fast);
+}
+
+.inline-date:hover {
+    border-color: var(--border-secondary);
+}
+
+.inline-date:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: var(--bg-input);
+}
+
+/* Inline owner input */
+.inline-owner {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    width: 100px;
+    transition: all var(--transition-fast);
+}
+
+.inline-owner:hover {
+    border-color: var(--border-secondary);
+}
+
+.inline-owner:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: var(--bg-input);
+}
+
+/* ==========================================
+   PAGINATION
+   ========================================== */
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    font-size: 0.95rem;
+    color: var(--text-tertiary);
+}
+
+.pagination-info {
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pagination-controls .page-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all var(--transition-fast);
+}
+
+.pagination-controls .page-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.pagination-controls .page-btn.active {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-size select {
+    padding: 6px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
