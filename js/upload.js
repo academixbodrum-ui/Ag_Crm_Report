@@ -46,6 +46,74 @@ class UploadManager {
                 this.handleFile(e.target.files[0]);
             }
         });
+
+        // Delete archive
+        const deleteBtn = document.getElementById('btn-delete-archive');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => this.handleArchiveDelete());
+        }
+
+        // Delete all data
+        const deleteAllBtn = document.getElementById('btn-delete-all');
+        if (deleteAllBtn) {
+            deleteAllBtn.addEventListener('click', () => this.handleAllDataDelete());
+        }
+    }
+
+    async handleAllDataDelete() {
+        if (!confirm('DİKKAT: Sistemdeki TÜM import kayıtları ve TÜM takip durumları kalıcı olarak SİLİNECEKTİR. Bu işlemi geri alamazsınız. Emin misiniz?')) {
+            return;
+        }
+
+        try {
+            this.updateProgress(10, 'Tüm veriler siliniyor...');
+            this.showProgress();
+            
+            await crmDB.deleteAllData();
+            
+            this.updateProgress(100, 'Tüm sistem verileri başarıyla temizlendi.');
+            showToast('Veritabanı sıfırlandı.', 'success');
+            
+            setTimeout(() => {
+                this.hideProgress();
+                if (window.trackingManager) {
+                    window.trackingManager.loadData();
+                }
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Delete all data error:', error);
+            showToast('Veriler silinirken hata oluştu: ' + error.message, 'error');
+            this.hideProgress();
+        }
+    }
+
+    async handleArchiveDelete() {
+        if (!confirm('Arşivlenmiş tüm kayıtlar (son yüklemede bulunmayanlar) kalıcı olarak silinecektir. Emin misiniz?')) {
+            return;
+        }
+
+        try {
+            this.updateProgress(10, 'Arşiv siliniyor...');
+            this.showProgress();
+            
+            await crmDB.deleteArchivedRows();
+            
+            this.updateProgress(100, 'Arşiv başarıyla temizlendi.');
+            showToast('Arşiv başarıyla silindi.', 'success');
+            
+            setTimeout(() => {
+                this.hideProgress();
+                if (window.trackingManager) {
+                    window.trackingManager.loadData();
+                }
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Delete archive error:', error);
+            showToast('Arşiv silinirken hata oluştu: ' + error.message, 'error');
+            this.hideProgress();
+        }
     }
 
     async handleFile(file) {

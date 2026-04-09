@@ -136,9 +136,27 @@
         <!-- Page: Upload -->
         <section class="page" id="page-upload" style="display:none;">
             <div class="page-header">
-                <h1>CSV Rapor Yükleme</h1>
-                <p class="page-subtitle">CRM raporunuzu yükleyin. Her yüklemede veriler otomatik güncellenir, takip
-                    bilgileriniz korunur.</p>
+                <div>
+                    <h1>CSV Rapor Yükleme</h1>
+                    <p class="page-subtitle">CRM raporunuzu yükleyin. Her yüklemede veriler otomatik güncellenir, takip
+                        bilgileriniz korunur.</p>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-outline" id="btn-delete-archive" style="color: var(--accent-amber-light); border-color: rgba(245, 158, 11, 0.2);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        Arşivi Sil
+                    </button>
+                    <button class="btn btn-outline" id="btn-delete-all" style="color: var(--accent-red-light); border-color: rgba(239, 68, 68, 0.2);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                            <line x1="18" y1="9" x2="12" y2="15" />
+                            <line x1="12" y1="9" x2="18" y2="15" />
+                        </svg>
+                        Tüm Verileri Sil
+                    </button>
+                </div>
             </div>
             <div class="upload-area" id="upload-area">
                 <div class="upload-dropzone" id="upload-dropzone">
@@ -188,13 +206,25 @@
                     <span class="record-count" id="tracking-record-count">0 kayıt</span>
                 </div>
                 <div class="page-header-right">
-                    <button class="btn btn-outline" id="btn-export-csv">
+                    <button class="btn btn-outline" id="btn-export-excel">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                             <polyline points="7 10 12 15 17 10" />
                             <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
+                        Excel olarak indir
+                    </button>
+                    <button class="btn btn-primary" id="btn-quick-upload">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        Yükle
+                    </button>
+                    <button class="btn btn-outline" id="btn-export-csv" style="display:none;">
                         Dışa Aktar
                     </button>
                 </div>
@@ -291,12 +321,17 @@
                         <input type="checkbox" id="toggle-bonus-view">
                         <span>Danışman Prim</span>
                     </label>
+                    <label class="filter-checkbox toggle-archive-cols">
+                        <input type="checkbox" id="toggle-archive-view" checked>
+                        <span>Arşivi Gizle</span>
+                    </label>
                     <button class="btn btn-ghost btn-sm" id="btn-clear-filters">Filtreleri Temizle</button>
             <div class="table-container" id="tracking-table-container">
                 <table class="data-table" id="tracking-table">
                     <thead>
                         <tr>
-                            <th class="th-sticky th-name" data-sort="Name">Ad Soyad</th>
+                            <th class="th-id" data-sort="row_uid">ID</th>
+                            <th class="th-name" data-sort="Name">Ad Soyad</th>
                             <th class="th-school" data-sort="School">Okul</th>
                             <th class="th-date" data-sort="Record Date">Kayıt Tarihi</th>
                             <th class="th-status" data-sort="status">Durum</th>
@@ -689,14 +724,15 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Scripts -->
-    <script src="js/db.js?v=10"></script>
-    <script src="js/csv-parser.js?v=10"></script>
-    <script src="js/upload.js?v=10"></script>
-    <script src="js/tracking.js?v=10"></script>
-    <script src="js/system.js?v=10"></script>
-    <script src="js/dashboard.js?v=10"></script>
-    <script src="js/status-rules.js?v=10"></script>
-    <script src="js/app.js?v=10"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="js/db.js?v=20"></script>
+    <script src="js/csv-parser.js?v=20"></script>
+    <script src="js/upload.js?v=20"></script>
+    <script src="js/tracking.js?v=20"></script>
+    <script src="js/system.js?v=20"></script>
+    <script src="js/dashboard.js?v=20"></script>
+    <script src="js/status-rules.js?v=20"></script>
+    <script src="js/app.js?v=20"></script>
 </body>
 
 </html>

@@ -319,6 +319,12 @@ body {
     gap: 16px;
 }
 
+.page-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .page-subtitle {
     color: var(--text-tertiary);
     font-size: 0.9rem;

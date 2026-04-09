@@ -121,6 +121,22 @@
     z-index: 11;
 }
 
+.data-table th.th-id,
+.data-table td.td-id {
+    width: 150px;
+    min-width: 150px;
+    position: sticky;
+    left: 0;
+    background: var(--bg-card);
+    z-index: 5;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.data-table th.th-id {
+    z-index: 11;
+    background: var(--bg-tertiary);
+}
+
 
 
 .data-table td {
@@ -135,7 +151,7 @@
 
 .data-table td.td-name {
     position: sticky;
-    left: 0;
+    left: 150px;
     background: var(--bg-card);
     z-index: 5;
     font-weight: 600;
@@ -147,6 +163,12 @@
 .data-table td.td-name {
     width: 120px;
     min-width: 120px;
+}
+.data-table th.th-name {
+    position: sticky;
+    left: 150px;
+    z-index: 11;
+    background: var(--bg-tertiary);
 }
 
 .data-table th.th-school,
@@ -226,13 +248,47 @@
     background: var(--bg-card-hover);
 }
 
-.data-table tbody tr.row-missing {
-    opacity: 0.5;
+.data-table tbody tr.row-missing td {
+    color: var(--text-tertiary);
+    background: rgba(0, 0, 0, 0.05);
 }
 
-.data-table tbody tr.row-missing td {
-    text-decoration: line-through;
-    text-decoration-color: var(--text-muted);
+.data-table tbody tr.row-missing td.td-id {
+    padding-left: 30px;
+    font-size: 0.75rem;
+}
+
+.data-table tbody tr.row-missing td.td-name {
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* History/Previous Values Row */
+.data-table tbody tr.row-history {
+    background: rgba(245, 158, 11, 0.03) !important;
+}
+
+.data-table tbody tr.row-history td {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--border-primary);
+}
+
+.data-table tbody tr.row-history td.td-id {
+    padding-left: 30px;
+    font-style: italic;
+}
+
+.data-table tbody tr.row-history .status-badge {
+    opacity: 0.6;
+    transform: scale(0.9);
+}
+
+/* Row separation */
+.data-table tbody tr:not(.row-missing):not(.row-history) {
+    border-top: 1px solid var(--border-primary);
 }
 
 /* Inline editable notes */

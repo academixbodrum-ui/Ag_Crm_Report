@@ -142,20 +142,21 @@ for (const [js, db] of Object.entries(FIELD_MAP_TO_DB)) {
 
 function toDbRow(jsRow) {
     const dbRow = {};
+
+    // 1. Initialize all mapped fields to null or their JS value
     for (const [jsKey, dbKey] of Object.entries(FIELD_MAP_TO_DB)) {
-        if (jsRow[jsKey] !== undefined) {
-            dbRow[dbKey] = jsRow[jsKey];
-        }
+        dbRow[dbKey] = jsRow[jsKey] !== undefined ? jsRow[jsKey] : null;
     }
-    // System fields
-    if (jsRow.row_uid !== undefined) dbRow.row_uid = jsRow.row_uid;
-    if (jsRow.row_hash !== undefined) dbRow.row_hash = jsRow.row_hash;
-    if (jsRow.source_upload_id !== undefined) dbRow.source_upload_id = jsRow.source_upload_id;
-    if (jsRow.source_uploaded_at !== undefined) dbRow.source_uploaded_at = jsRow.source_uploaded_at;
-    if (jsRow.is_missing_in_latest_upload !== undefined) dbRow.is_missing_in_latest_upload = jsRow.is_missing_in_latest_upload;
-    if (jsRow.archived_at !== undefined) dbRow.archived_at = jsRow.archived_at;
-    if (jsRow.previous_values !== undefined) dbRow.previous_values = jsRow.previous_values;
-    if (jsRow._parse_errors) dbRow.parse_errors = jsRow._parse_errors;
+
+    // 2. Add system fields with consistent presence (default to null where appropriate)
+    dbRow.row_uid = jsRow.row_uid !== undefined ? jsRow.row_uid : null;
+    dbRow.row_hash = jsRow.row_hash !== undefined ? jsRow.row_hash : null;
+    dbRow.source_upload_id = jsRow.source_upload_id !== undefined ? jsRow.source_upload_id : null;
+    dbRow.source_uploaded_at = jsRow.source_uploaded_at !== undefined ? jsRow.source_uploaded_at : null;
+    dbRow.is_missing_in_latest_upload = jsRow.is_missing_in_latest_upload !== undefined ? jsRow.is_missing_in_latest_upload : false;
+    dbRow.archived_at = jsRow.archived_at !== undefined ? jsRow.archived_at : null;
+    dbRow.parse_errors = jsRow._parse_errors !== undefined ? jsRow._parse_errors : null;
+
     return dbRow;
 }
 
@@ -360,6 +361,77 @@ class CrmDatabase {
 
     async getRowCount() {
         return await supabase.count('crm_import_rows');
+    }
+
+    async deleteAllData() {
+        let totalDeleted = 0;
+        
+        // 1. Delete all import rows and their tracking
+        while (true) {
+            const rowsToDelete = await supabase.select('crm_import_rows', 'select=row_uid&limit=1000');
+            if (!rowsToDelete || rowsToDelete.length === 0) break;
+            
+            const chunkSize = 25;
+            for (let i = 0; i < rowsToDelete.length; i += chunkSize) {
+                const chunk = rowsToDelete.slice(i, i + chunkSize);
+                const uids = chunk.map(r => `"${r.row_uid.replace(/"/g, '""')}"`).join(',');
+                const filter = `row_uid=in.(${encodeURIComponent(uids)})`;
+                
+                // First delete from tracking
+                await supabase.delete('crm_tracking', filter);
+                // Then delete from import_rows
+                await supabase.delete('crm_import_rows', filter);
+            }
+            totalDeleted += rowsToDelete.length;
+        }
+
+        // 2. Clean up any stray tracking rows 
+        while (true) {
+            const strayTracks = await supabase.select('crm_tracking', 'select=row_uid&limit=1000');
+            if (!strayTracks || strayTracks.length === 0) break;
+
+            const chunkSize = 25;
+            for (let i = 0; i < strayTracks.length; i += chunkSize) {
+                const chunk = strayTracks.slice(i, i + chunkSize);
+                const uids = chunk.map(r => `"${r.row_uid.replace(/"/g, '""')}"`).join(',');
+                const filter = `row_uid=in.(${encodeURIComponent(uids)})`;
+                await supabase.delete('crm_tracking', filter);
+            }
+        }
+
+        // 3. Clean up upload history
+        while (true) {
+            const histories = await supabase.select('upload_history', 'select=upload_id&limit=100');
+            if (!histories || histories.length === 0) break;
+
+            const uids = histories.map(r => `"${r.upload_id.replace(/"/g, '""')}"`).join(',');
+            const filter = `upload_id=in.(${encodeURIComponent(uids)})`;
+            await supabase.delete('upload_history', filter);
+        }
+
+        return totalDeleted;
+    }
+
+    async deleteArchivedRows() {
+        let totalDeleted = 0;
+        while (true) {
+            const rowsToDelete = await supabase.select('crm_import_rows', 'select=row_uid&is_missing_in_latest_upload=eq.true&limit=1000');
+            if (!rowsToDelete || rowsToDelete.length === 0) break;
+            
+            const chunkSize = 25;
+            for (let i = 0; i < rowsToDelete.length; i += chunkSize) {
+                const chunk = rowsToDelete.slice(i, i + chunkSize);
+                const uids = chunk.map(r => `"${r.row_uid.replace(/"/g, '""')}"`).join(',');
+                const filter = `row_uid=in.(${encodeURIComponent(uids)})`;
+                
+                // First delete from tracking
+                await supabase.delete('crm_tracking', filter);
+                // Then delete from import_rows
+                await supabase.delete('crm_import_rows', filter);
+            }
+            totalDeleted += rowsToDelete.length;
+        }
+        return totalDeleted;
     }
 }
 

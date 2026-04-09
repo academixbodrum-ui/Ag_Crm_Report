@@ -11,6 +11,7 @@ class TrackingManager {
         this.sortColumn = 'Record Date';
         this.sortDirection = 'desc';
         this.activeStatusDropdown = null;
+        this.hideArchive = true; // Default: archive hidden
 
         // DOM refs
         this.tableBody = document.getElementById('tracking-table-body');
@@ -61,6 +62,12 @@ class TrackingManager {
             }
         });
 
+        // Archive Toggle
+        document.getElementById('toggle-archive-view').addEventListener('change', (e) => {
+            this.hideArchive = e.target.checked;
+            this.applyFilters();
+        });
+
         // Clear filters
         document.getElementById('btn-clear-filters').addEventListener('click', () => this.clearFilters());
 
@@ -104,6 +111,15 @@ class TrackingManager {
         });
 
         // Export
+        document.getElementById('btn-export-excel').addEventListener('click', () => this.exportExcel());
+
+        // Quick Upload
+        document.getElementById('btn-quick-upload').addEventListener('click', () => {
+            // Trigger navigation to upload page
+            const navUpload = document.getElementById('nav-upload');
+            if (navUpload) navUpload.click();
+        });
+
         document.getElementById('btn-export-csv').addEventListener('click', () => this.exportCSV());
 
         // Close status dropdown on outside click
@@ -204,9 +220,8 @@ class TrackingManager {
         // const showMissing = document.getElementById('filter-missing')?.checked || false;
 
         this.filteredData = this.data.filter(row => {
-            // Filter out missing/archived rows by default to prevent "double data"
-            // (Old rows remain in DB as 'is_missing_in_latest_upload=true')
-            if (row.is_missing_in_latest_upload) return false;
+            // If hideArchive is on, filter out archived rows
+            if (this.hideArchive && row.is_missing_in_latest_upload) return false;
 
             // Search
             if (search) {
@@ -299,7 +314,26 @@ class TrackingManager {
         const col = this.sortColumn;
         const dir = this.sortDirection === 'asc' ? 1 : -1;
 
+        // Helper to get base identity (Name|Surname|Date)
+        const getBaseId = (row) => row.row_uid.split('|').slice(0, 3).join('|').toLowerCase();
+
         this.filteredData.sort((a, b) => {
+            const baseA = getBaseId(a);
+            const baseB = getBaseId(b);
+
+            // If they are in the same identity group, keep them together
+            if (baseA === baseB) {
+                // Active first, then Missing (Archived)
+                const aM = a.is_missing_in_latest_upload ? 1 : 0;
+                const bM = b.is_missing_in_latest_upload ? 1 : 0;
+                if (aM !== bM) return aM - bM;
+                
+                // Then sort by 0001 counter
+                const cA = a.row_uid.split('|')[3] || '';
+                const cB = b.row_uid.split('|')[3] || '';
+                return cA.localeCompare(cB);
+            }
+
             let valA, valB;
 
             if (col === 'Name') {
@@ -318,6 +352,9 @@ class TrackingManager {
                 valA = a[col] ?? -Infinity;
                 valB = b[col] ?? -Infinity;
                 return (valA - valB) * dir;
+            } else if (col === 'row_uid') {
+                valA = a.row_uid;
+                valB = b.row_uid;
             } else {
                 valA = (a[col] || '').toLowerCase();
                 valB = (b[col] || '').toLowerCase();
@@ -325,7 +362,9 @@ class TrackingManager {
 
             if (valA < valB) return -1 * dir;
             if (valA > valB) return 1 * dir;
-            return 0;
+            
+            // If primary values are equal, group by Base ID so related archived rows stick together
+            return baseA.localeCompare(baseB);
         });
     }
 
@@ -363,12 +402,20 @@ class TrackingManager {
         const end = Math.min(start + this.pageSize, this.filteredData.length);
         const pageData = this.filteredData.slice(start, end);
 
-        this.recordCount.textContent = `${this.filteredData.length} kayıt`;
+        // Count active vs archived in current page
+        const activeCount = this.filteredData.filter(r => !r.is_missing_in_latest_upload).length;
+        const archivedCount = this.filteredData.filter(r => r.is_missing_in_latest_upload).length;
+        
+        if (archivedCount > 0) {
+            this.recordCount.textContent = `${activeCount} aktif + ${archivedCount} arşiv kayıt`;
+        } else {
+            this.recordCount.textContent = `${this.filteredData.length} kayıt`;
+        }
 
         if (pageData.length === 0) {
             this.tableBody.innerHTML = `
                 <tr>
-                    <td colspan="11" style="text-align: center; padding: 60px; color: var(--text-tertiary);">
+                    <td colspan="25" style="text-align: center; padding: 60px; color: var(--text-tertiary);">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.3; display: block; margin: 0 auto 12px;">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                             <line x1="3" y1="9" x2="21" y2="9"/>
@@ -451,12 +498,14 @@ class TrackingManager {
                 }
             }
 
-            return `
+            // MAIN ROW HTML
+            const mainRowHtml = `
                 <tr class="${isMissing ? 'row-missing' : ''}" 
                     data-uid="${this.escapeHtml(row.row_uid)}" 
                     data-index="${globalIdx}"
                     data-row-status="${tracking.status}"
                     style="${rowStyle}">
+                    <td class="td-id" title="${this.escapeHtml(row.row_uid)}">${this.escapeHtml(row.row_uid)}</td>
                     <td class="td-name" onclick="trackingManager.openDetail('${this.escapeAttr(row.row_uid)}')">${b('Name', this.escapeHtml(row['Name'] || ''))} ${b('Surname', this.escapeHtml(row['Surname'] || ''))}</td>
                     <td class="td-school" title="${this.escapeHtml(row['School'] || '')}">${b('School', this.escapeHtml(row['School'] || ''))}</td>
                     <td class="td-date">${b('Record Date', formatDateDisplay(recordDate) || this.escapeHtml(recordDate || ''))}</td>
@@ -511,7 +560,6 @@ class TrackingManager {
                         ${formatNumber((totalCommValue * 0.15) - (parseFloat(tracking.deposit_bonus) || 0) - (parseFloat(tracking.consultant_bonus) || 0))}
                     </td>
 
-
                     <td>
                         <textarea class="inline-note" data-uid="${this.escapeAttr(row.row_uid)}" data-field="notes"
                             onchange="trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'notes', this.value)"
@@ -519,6 +567,45 @@ class TrackingManager {
                     </td>
                 </tr>
             `;
+
+            // HISTORY ROW HTML (The "Archived data of a changed row")
+            let historyRowHtml = '';
+            if (row.previous_values && !this.hideArchive && !isMissing) {
+                const ph = row.previous_values;
+                const phRecordDate = ph['Record Date'] || recordDate;
+                const phProgramDate = ph['Program Start Date'] || programDate;
+                const phTotalComm = (parseFloat(ph['Comm']) || 0) + (parseFloat(ph['Cancellation']) || 0) - (parseFloat(ph['Discount']) || 0) - (parseFloat(ph['Represantative Comm']) || 0);
+
+                historyRowHtml = `
+                    <tr class="row-history">
+                        <td class="td-id">ARCHIVE (OLD)</td>
+                        <td class="td-name">${this.escapeHtml(ph['Name'] || '')} ${this.escapeHtml(ph['Surname'] || '')}</td>
+                        <td class="td-school">${this.escapeHtml(ph['School'] || '')}</td>
+                        <td class="td-date">${formatDateDisplay(phRecordDate)}</td>
+                        <td style="text-align:center;">-</td>
+                        <td class="td-date">${formatDateDisplay(phProgramDate)}</td>
+                        <td class="col-extra">${this.escapeHtml(ph['Duration'] || '')}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Total Debt'])}</td>
+                        <td class="td-number">${formatNumber(ph['Paid'])}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Refund'])}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Tuition'])}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Cancellation'])}</td>
+                        <td class="td-number">${formatNumber(ph['Balance'])}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Comm'])}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Discount'])}</td>
+                        <td class="td-currency">${this.escapeHtml(ph['Currency'] || '')}</td>
+                        <td class="col-extra">${this.escapeHtml(ph['Represantative'] || '')}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['Represantative Comm'])}</td>
+                        <td class="td-number col-extra">${formatNumber(ph['School Balance'])}</td>
+                        <td class="td-number td-total-comm">${formatNumber(phTotalComm)}</td>
+                        <td colspan="6" style="background: rgba(0,0,0,0.05); text-align:center; font-size: 0.8rem;">
+                            Değişiklik Öncesi Veriler
+                        </td>
+                    </tr>
+                `;
+            }
+
+            return mainRowHtml + historyRowHtml;
         }).join('');
 
         this.updatePagination(start + 1, end, this.filteredData.length);
@@ -845,6 +932,60 @@ class TrackingManager {
         document.getElementById('detail-modal').style.display = 'none';
         this.renderTable();
         showToast('Takip bilgileri kaydedildi.', 'success');
+    }
+
+    exportExcel() {
+        if (this.filteredData.length === 0) {
+            showToast('Dışa aktarılacak veri yok.', 'warning');
+            return;
+        }
+
+        const headers = [
+            'Name', 'Surname', 'E-Mail', 'Cell Phone',
+            'School', 'School Center', 'Branch',
+            'Employee', 'Processor', 'Program',
+            'Record Date', 'Program Start Date', 'Duration',
+            'Total Debt', 'Paid', 'Refund', 'Tuition',
+            'Cancellation', 'Balance', 'Comm', 'Discount',
+            'Currency', 'Represantative', 'Represantative Comm', 'School Balance',
+            'Status', 'Status Reason', 'Notes', 'Follow-Up Date', 'Owner',
+            'Deposit Bonus', 'Deposit Bonus Status', 'Consultant Bonus', 'Consultant Bonus Status'
+        ];
+
+        const dataRows = this.filteredData.map(row => {
+            const tracking = row._tracking || {};
+            return [
+                row['Name'] || '', row['Surname'] || '', row['E-Mail'] || '', row['Cell Phone'] || '',
+                row['School'] || '', row['School Center'] || '', row['Branch'] || '',
+                row['Employee'] || '', row['Processor'] || '', row['Program'] || '',
+                formatDateDisplay(row['Record Date']), formatDateDisplay(row['Program Start Date']),
+                row['Duration'] || '',
+                row['Total Debt'] || 0, row['Paid'] || 0, row['Refund'] || 0, row['Tuition'] || 0,
+                row['Cancellation'] || 0, row['Balance'] || 0, row['Comm'] || 0, row['Discount'] || 0,
+                row['Currency'] || '', row['Represantative'] || '', row['Represantative Comm'] || 0,
+                row['School Balance'] || 0,
+                tracking.status || '', tracking.status_reason || '', tracking.notes || '',
+                tracking.next_follow_up_date || '', tracking.owner || '',
+                tracking.deposit_bonus || '', tracking.deposit_bonus_status || '',
+                tracking.consultant_bonus || '', tracking.consultant_bonus_status || ''
+            ];
+        });
+
+        // Add headers at the top
+        const sheetData = [headers, ...dataRows];
+
+        // Create workbook and sheet
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+        // Add sheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, "CRM_Takip");
+
+        // Download
+        const fileName = `CRM_Takip_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        showToast(`${this.filteredData.length} kayıt Excel olarak dışa aktarıldı.`, 'success');
     }
 
     exportCSV() {

@@ -186,27 +186,15 @@ function formatNumber(num, decimals = 2) {
 }
 
 /**
- * Generate row_uid from a parsed row
+ * Generate base row_uid from a parsed row (Name + Surname + Record Date)
  */
 function generateRowUID(row) {
-    const email = (row['E-Mail'] || '').trim().toLowerCase();
-    const school = (row['School'] || '').trim();
-    const program = (row['Program'] || '').trim();
-    const programStartDate = row['Program Start Date'] || '';
-    const dateStr = programStartDate ? formatDateDisplay(programStartDate) : '';
+    const name = (row['Name'] || '').trim().toLowerCase();
+    const surname = (row['Surname'] || '').trim().toLowerCase();
     const recordDate = row['Record Date'] || '';
     const recordDateStr = recordDate ? formatDateDisplay(recordDate) : '';
 
-    if (email) {
-        return `${email}|${school}|${program}|${dateStr}|${recordDateStr}`;
-    }
-
-    // Fallback: Name + Surname + Cell Phone + School + Program + Dates
-    const name = (row['Name'] || '').trim().toLowerCase();
-    const surname = (row['Surname'] || '').trim().toLowerCase();
-    const phone = (row['Cell Phone'] || '').trim();
-
-    return `${name}|${surname}|${phone}|${school}|${program}|${dateStr}|${recordDateStr}`;
+    return `${name}|${surname}|${recordDateStr}`;
 }
 
 /**
@@ -314,15 +302,18 @@ async function processCSVFile(file, onProgress) {
 
     for (let i = 0; i < rawRows.length; i++) {
         const normalized = normalizeRow(rawRows[i]);
-        let uid = generateRowUID(normalized);
+        let baseUid = generateRowUID(normalized);
 
-        // If this UID was already seen, append a counter suffix
-        if (uidCounts[uid] !== undefined) {
-            uidCounts[uid]++;
-            uid = `${uid}|#${uidCounts[uid]}`;
+        // Increment counter for this base UID (Name + Surname + Record Date)
+        if (uidCounts[baseUid] === undefined) {
+            uidCounts[baseUid] = 1;
         } else {
-            uidCounts[uid] = 0;
+            uidCounts[baseUid]++;
         }
+
+        // Append 4-digit counter to ensure uniqueness (e.g., 0001, 0002)
+        const counterStr = String(uidCounts[baseUid]).padStart(4, '0');
+        const uid = `${baseUid}|${counterStr}`;
 
         normalized.row_uid = uid;
         normalized.row_hash = await generateRowHash(normalized);
