@@ -491,7 +491,10 @@ class TrackingManager {
                 return typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 : v;
             };
 
-            const totalCommValue = getVal('Comm') + getVal('Cancellation') - getVal('Discount') - getVal('Represantative Comm');
+            const csvCalc = getVal('Comm') + getVal('Cancellation') - getVal('Discount') - getVal('Represantative Comm');
+            const manualComm = tracking.manual_net_commission ? parseFloat(tracking.manual_net_commission) : 0;
+            const totalCommValue = (csvCalc !== 0) ? csvCalc : manualComm;
+            const isManualEntry = (csvCalc === 0);
 
             // Evaluate visual rules
             let rowStyle = '';
@@ -537,7 +540,15 @@ class TrackingManager {
                         <span class="status-badge" data-status="${tracking.status}" onclick="event.stopPropagation(); trackingManager.toggleStatusDropdown(event, '${this.escapeAttr(row.row_uid)}')">${tracking.status}</span>
                     </td>
                     <td class="td-date">${b('Program Start Date', formatDateDisplay(programDate) || this.escapeHtml(programDate || ''))}</td>
-                    <td class="td-number td-total-comm" style="${Math.abs(totalCommValue - getVal('Comm')) > 0.01 ? 'color: var(--accent-red) !important; font-weight: 700;' : ''}">${formatNumber(totalCommValue)}</td>
+                    <td class="td-number td-total-comm" style="${isManualEntry ? 'color: var(--accent-red) !important; font-weight: 700;' : (Math.abs(totalCommValue - getVal('Comm')) > 0.01 ? 'color: var(--accent-amber) !important; font-weight: 700;' : '')}">
+                        ${isManualEntry ? 
+                            `<input type="number" step="0.01" value="${manualComm || ''}" 
+                                onchange="trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'manual_net_commission', this.value)"
+                                onclick="event.stopPropagation()"
+                                style="width: 100%; border: none; background: transparent; text-align: right; color: inherit; font: inherit; padding: 0;">` 
+                            : formatNumber(totalCommValue)
+                        }
+                    </td>
                     <td class="td-currency">${b('Currency', this.escapeHtml(row['Currency'] || ''))}</td>
                     <td class="col-extra">${b('Duration', this.escapeHtml(row['Duration'] || ''))}</td>
                     <td class="td-number col-extra">${b('Total Debt', formatNumber(row['Total Debt']))}</td>
@@ -596,9 +607,13 @@ class TrackingManager {
             let historyRowHtml = '';
             if (row.previous_values && !this.hideArchive && !isMissing) {
                 const ph = row.previous_values;
-                const phRecordDate = ph['Record Date'] || recordDate;
+                const phRecordDate = ph['Record Date'] || ph.record_date;
                 const phProgramDate = ph['Program Start Date'] || programDate;
-                const phTotalComm = (parseFloat(ph['Comm']) || 0) + (parseFloat(ph['Cancellation']) || 0) - (parseFloat(ph['Discount']) || 0) - (parseFloat(ph['Represantative Comm']) || 0);
+                
+                const phCsvCalc = (parseFloat(ph['Comm']) || 0) + (parseFloat(ph['Cancellation']) || 0) - (parseFloat(ph['Discount']) || 0) - (parseFloat(ph['Represantative Comm']) || 0);
+                const phManualComm = ph.manual_net_commission ? parseFloat(ph.manual_net_commission) : 0;
+                const phTotalComm = (phCsvCalc !== 0) ? phCsvCalc : phManualComm;
+                const phIsManual = (phCsvCalc === 0);
 
                 historyRowHtml = `
                     <tr class="row-history">
@@ -608,7 +623,9 @@ class TrackingManager {
                         <td class="td-date">${formatDateDisplay(phRecordDate)}</td>
                         <td style="text-align:center;">-</td>
                         <td class="td-date">${formatDateDisplay(phProgramDate)}</td>
-                        <td class="td-number td-total-comm" style="${Math.abs(phTotalComm - (parseFloat(ph['Comm']) || 0)) > 0.01 ? 'color: var(--accent-red) !important; font-weight: 700;' : ''}">${formatNumber(phTotalComm)}</td>
+                        <td class="td-number td-total-comm" style="${phIsManual ? 'color: var(--accent-red) !important; font-weight: 700;' : (Math.abs(phTotalComm - (parseFloat(ph['Comm']) || 0)) > 0.01 ? 'color: var(--accent-amber) !important; font-weight: 700;' : '')}">
+                            ${phIsManual ? formatNumber(phManualComm) : formatNumber(phTotalComm)}
+                        </td>
                         <td class="td-currency">${this.escapeHtml(ph['Currency'] || '')}</td>
                         <td class="col-extra">${this.escapeHtml(ph['Duration'] || '')}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Total Debt'])}</td>

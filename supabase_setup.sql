@@ -47,6 +47,12 @@ CREATE TABLE IF NOT EXISTS crm_tracking (
     next_follow_up_date DATE,
     owner TEXT DEFAULT '',
     tags TEXT[] DEFAULT '{}',
+    manual_net_commission NUMERIC DEFAULT 0,
+    deposit_bonus NUMERIC DEFAULT 0,
+    deposit_bonus_status TEXT DEFAULT '',
+    consultant_bonus NUMERIC DEFAULT 0,
+    consultant_bonus_status TEXT DEFAULT '',
+    remaining_bonus NUMERIC DEFAULT 0,
     last_touched_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
