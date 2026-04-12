@@ -326,11 +326,37 @@
                         <span>Arşivi Gizle</span>
                     </label>
                     <button class="btn btn-ghost btn-sm" id="btn-clear-filters">Filtreleri Temizle</button>
+            </div>
+            
+            <!-- Bulk Actions Bar -->
+            <div id="bulk-actions-bar" class="bulk-actions-bar" style="display: none;">
+                <div class="bulk-info">
+                    <span id="selected-count">0</span> kayıt seçildi
+                </div>
+                <div class="bulk-controls">
+                    <select id="bulk-status-select" class="bulk-select">
+                        <option value="">Durum Değiştir...</option>
+                        <option value="Process">Process</option>
+                        <option value="Visa">Visa</option>
+                        <option value="Awaiting Payment">Awaiting Payment</option>
+                        <option value="School Payment">School Payment</option>
+                        <option value="Commission">Commission</option>
+                        <option value="Commission (Taksim)">Commission (Taksim)</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" id="btn-bulk-apply">Uygula</button>
+                    <button class="btn btn-ghost btn-sm" id="btn-bulk-cancel">İptal</button>
+                </div>
+            </div>
+
             <div class="table-container" id="tracking-table-container">
                 <table class="data-table" id="tracking-table">
                     <thead>
                         <tr>
-                            <th class="th-id" data-sort="row_uid">ID</th>
+                            <th class="th-selection" style="cursor: default;">
+                                <input type="checkbox" id="select-all-checkbox">
+                            </th>
                             <th class="th-name" data-sort="Name">Ad Soyad</th>
                             <th class="th-school" data-sort="School">Okul</th>
                             <th class="th-date" data-sort="Record Date">Kayıt Tarihi</th>
@@ -617,44 +643,82 @@
                     </div>
                 </div>
             </div>
+        </div>
 
             <!-- Tab: Currency -->
             <div id="tab-currency" class="system-tab-content" style="display:none;">
                 <div class="system-section">
                     <div class="system-card">
                         <div class="system-card-header">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                                 <div>
                                     <h2>Kur / Döviz Tanımları</h2>
-                                    <p>Sistemdeki döviz birimleri için sembol ve kur ayarlarını yapın.</p>
+                                    <p>Seçilen tarihler için Günlük USD Çapraz kur değerleri</p>
                                 </div>
-                                <div class="search-box" style="max-width: 300px; margin-bottom: 0;">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2">
-                                        <circle cx="11" cy="11" r="8" />
-                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                <div class="search-box" style="max-width: 200px; margin-bottom: 0;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                                     </svg>
                                     <input type="text" id="currency-search" placeholder="Döviz ara..."
                                         oninput="if(window.systemManager) window.systemManager.filterCurrencyList(this.value)">
                                 </div>
+                                    <div class="system-card-actions" style="margin-bottom: 0;">
+                                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                            <div class="filter-date-group" style="flex-direction: row; align-items: center; gap: 6px;">
+                                                <select id="fetch-rate-month" style="padding: 6px 10px; font-size: 0.8rem; width: 110px; border-radius: 6px; border: 1px solid var(--border-accent); background: var(--bg-secondary); color: var(--text-primary);">
+                                                    <option value="01">Ocak</option>
+                                                    <option value="02">Şubat</option>
+                                                    <option value="03">Mart</option>
+                                                    <option value="04">Nisan</option>
+                                                    <option value="05">Mayıs</option>
+                                                    <option value="06">Haziran</option>
+                                                    <option value="07">Temmuz</option>
+                                                    <option value="08">Ağustos</option>
+                                                    <option value="09">Eylül</option>
+                                                    <option value="10">Ekim</option>
+                                                    <option value="11">Kasım</option>
+                                                    <option value="12">Aralık</option>
+                                                </select>
+                                                <select id="fetch-rate-year" style="padding: 6px 10px; font-size: 0.8rem; width: 90px; border-radius: 6px; border: 1px solid var(--border-accent); background: var(--bg-secondary); color: var(--text-primary);">
+                                                    <!-- Years will be populated by JS -->
+                                                </select>
+                                            </div>
+                                            <button class="btn btn-outline btn-sm" id="btn-fetch-rates" onclick="fetchDailyRates()" style="background: var(--bg-tertiary); border: 1px solid var(--border-accent);">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                                </svg>
+                                                Aylık Kurları Çek
+                                            </button>
+                                            <button class="btn btn-primary btn-sm" id="btn-save-currencies" onclick="saveAllCurrencies()">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                                    <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+                                                </svg>
+                                                Kaydet
+                                            </button>
+                                        </div>
+                                    </div>
                             </div>
-                        </div>
-                        <div class="system-card-actions">
-                            <button class="btn btn-primary btn-sm" id="btn-save-currencies"
-                                onclick="saveAllCurrencies()">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                                    <polyline points="17 21 17 13 7 13 7 21" />
-                                    <polyline points="7 3 7 8 15 8" />
-                                </svg>
-                                Kaydet
-                            </button>
                         </div>
                         <div class="currency-list-container" id="currency-list">
                             <div style="text-align:center; padding: 40px; color: var(--text-tertiary);">
                                 Yükleniyor...
                             </div>
+                        </div>
+
+                        <!-- İşlenen Aylar -->
+                        <div class="processed-months-container" style="margin-top: 20px;">
+                            <h3 style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 10px; border-bottom: 1px solid var(--border-accent); padding-bottom: 5px;">İşlenen Aylar Tarihçesi</h3>
+                            <div id="processed-months-list" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <span style="font-size: 0.85rem; color: var(--text-tertiary);">Kayıt aranıyor...</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: 12px; border: 1px dashed rgba(59, 130, 246, 0.3); font-size: 0.8rem; color: var(--text-tertiary); display: flex; align-items: center; gap: 10px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                            </svg>
+                            <span><strong>Veri Kaynağı:</strong> Kurlar <a href="https://api.frankfurter.dev" target="_blank" style="color: var(--primary-color); text-decoration: underline; font-weight: 600;">api.frankfurter.dev</a> üzerinden çekilmektedir.</span>
                         </div>
                     </div>
                 </div>
@@ -725,11 +789,40 @@
 
     <!-- Scripts -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="js/db.js?v=20"></script>
     <script src="js/csv-parser.js?v=20"></script>
     <script src="js/upload.js?v=20"></script>
+    <!-- Modal: Daily Rates Breakdown -->
+    <div id="modal-daily-rates" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="modal-daily-title">Günlük Kur Detayları</h2>
+                <button class="close-btn" onclick="closeModal('modal-daily-rates')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-daily-info" style="margin-bottom: 15px; color: var(--text-secondary); font-size: 0.9rem;"></div>
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-accent); border-radius: 8px;">
+                    <table class="data-table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th style="text-align: right;">USD Karşılığı</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-daily-body">
+                            <!-- Daily rates populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('modal-daily-rates')">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js?v=20"></script>
     <script src="js/tracking.js?v=20"></script>
-    <script src="js/system.js?v=20"></script>
+    <script src="js/system.js?v=32"></script>
     <script src="js/dashboard.js?v=20"></script>
     <script src="js/status-rules.js?v=20"></script>
     <script src="js/app.js?v=20"></script>

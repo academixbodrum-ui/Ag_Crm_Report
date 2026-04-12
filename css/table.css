@@ -121,21 +121,9 @@
     z-index: 11;
 }
 
-.data-table th.th-id,
-.data-table td.td-id {
-    width: 150px;
-    min-width: 150px;
-    position: sticky;
-    left: 0;
-    background: var(--bg-card);
-    z-index: 5;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-.data-table th.th-id {
-    z-index: 11;
-    background: var(--bg-tertiary);
-}
+/* ID column removed */
+
+
 
 
 
@@ -151,7 +139,7 @@
 
 .data-table td.td-name {
     position: sticky;
-    left: 150px;
+    left: 0;
     background: var(--bg-card);
     z-index: 5;
     font-weight: 600;
@@ -166,7 +154,7 @@
 }
 .data-table th.th-name {
     position: sticky;
-    left: 150px;
+    left: 0;
     z-index: 11;
     background: var(--bg-tertiary);
 }
@@ -239,6 +227,16 @@
     cursor: pointer;
     transition: background var(--transition-fast);
 }
+
+.data-table tbody tr.zebra-row {
+    background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.data-table tbody tr.zebra-row td.td-name {
+    background: #1a2236 !important; /* var(--bg-tertiary) level */
+}
+
+
 
 .data-table tbody tr:hover td {
     background: rgba(255, 255, 255, 0.02);
@@ -389,6 +387,12 @@
     gap: 4px;
 }
 
+#pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .pagination-controls .page-btn {
     width: 32px;
     height: 32px;
@@ -432,3 +436,76 @@
     font-size: 0.95rem;
     cursor: pointer;
 }
+
+/* ==========================================
+   BULK ACTIONS
+   ========================================== */
+
+.bulk-actions-bar {
+    background: var(--accent-blue);
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: slideInDown 0.3s ease-out;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+@keyframes slideInDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.bulk-info {
+    font-weight: 600;
+}
+
+.bulk-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.bulk-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.bulk-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.th-selection, .td-selection {
+    width: 40px !important;
+    min-width: 40px !important;
+    text-align: center !important;
+    padding: 8px 0 !important;
+}
+
+.td-selection input[type="checkbox"],
+.th-selection input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--accent-blue);
+}
+
+.data-table tr.selected {
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.data-table tr.selected td.td-name {
+    background: #242c42 !important; /* Lighter than normal sticky background */
+}

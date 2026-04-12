@@ -488,15 +488,80 @@ body {
    ========================================== */
 
 @media (max-width: 1024px) {
-    .sidebar {
-        transform: translateX(-100%);
+    :root {
+        --sidebar-width: var(--sidebar-width-collapsed);
     }
 
-    .sidebar.open {
-        transform: translateX(0);
+    .sidebar {
+        width: var(--sidebar-width-collapsed) !important;
+        transform: none !important;
+        display: flex !important;
+        visibility: visible !important;
+    }
+
+    .sidebar .logo-text,
+    .sidebar .nav-item span,
+    .sidebar .sidebar-category,
+    .sidebar .upload-status span {
+        display: none !important;
+    }
+
+    .sidebar .logo {
+        justify-content: center;
+        gap: 0;
+    }
+
+    .sidebar .nav-item {
+        justify-content: center;
+        padding: 12px;
+    }
+
+    .sidebar .sidebar-footer {
+        display: flex;
+        justify-content: center;
     }
 
     .main-content {
-        margin-left: 0;
+        margin-left: var(--sidebar-width-collapsed) !important;
+        padding: 20px;
     }
 }
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+    animation: spin 1s linear infinite;
+}
+
+/* Currency Grid Custom Styles */
+#currency-list input::-webkit-outer-spin-button,
+#currency-list input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#currency-list input[type=number] {
+    -moz-appearance: textfield;
+}
+
+#currency-list input[readonly] {
+    cursor: default;
+}
+
+#currency-list .data-table th {
+    font-size: 0.65rem;
+    padding: 4px 2px;
+    min-width: 22px;
+}
+
+#currency-list .data-table td {
+    border-right: 1px solid var(--border-primary);
+}
+
+#currency-list .data-table tr:hover td {
+    background: rgba(59, 130, 246, 0.03) !important;
+}
+

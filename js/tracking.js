@@ -12,6 +12,7 @@ class TrackingManager {
         this.sortDirection = 'desc';
         this.activeStatusDropdown = null;
         this.hideArchive = true; // Default: archive hidden
+        this.selectedRows = new Set();
 
         // DOM refs
         this.tableBody = document.getElementById('tracking-table-body');
@@ -128,6 +129,23 @@ class TrackingManager {
                 this.closeStatusDropdown();
             }
         });
+
+        // Select All Checkbox
+        const selectAll = document.getElementById('select-all-checkbox');
+        if (selectAll) {
+            selectAll.addEventListener('change', (e) => this.toggleSelectAll(e.target.checked));
+        }
+
+        // Bulk Actions
+        const btnBulkApply = document.getElementById('btn-bulk-apply');
+        if (btnBulkApply) {
+            btnBulkApply.addEventListener('click', () => this.bulkUpdateStatus());
+        }
+
+        const btnBulkCancel = document.getElementById('btn-bulk-cancel');
+        if (btnBulkCancel) {
+            btnBulkCancel.addEventListener('click', () => this.clearSelection());
+        }
     }
 
     getFieldRule(status, field) {
@@ -500,12 +518,18 @@ class TrackingManager {
 
             // MAIN ROW HTML
             const mainRowHtml = `
-                <tr class="${isMissing ? 'row-missing' : ''}" 
+                <tr class="${isMissing ? 'row-missing' : ''} ${this.selectedRows.has(row.row_uid) ? 'selected' : ''} ${globalIdx % 2 === 1 ? 'zebra-row' : ''}" 
                     data-uid="${this.escapeHtml(row.row_uid)}" 
                     data-index="${globalIdx}"
                     data-row-status="${tracking.status}"
                     style="${rowStyle}">
-                    <td class="td-id" title="${this.escapeHtml(row.row_uid)}">${this.escapeHtml(row.row_uid)}</td>
+
+                    <td class="td-selection" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="row-checkbox" 
+                            ${this.selectedRows.has(row.row_uid) ? 'checked' : ''}
+                            onchange="trackingManager.toggleSelection('${this.escapeAttr(row.row_uid)}', this.checked)">
+                    </td>
+
                     <td class="td-name" onclick="trackingManager.openDetail('${this.escapeAttr(row.row_uid)}')">${b('Name', this.escapeHtml(row['Name'] || ''))} ${b('Surname', this.escapeHtml(row['Surname'] || ''))}</td>
                     <td class="td-school" title="${this.escapeHtml(row['School'] || '')}">${b('School', this.escapeHtml(row['School'] || ''))}</td>
                     <td class="td-date">${b('Record Date', formatDateDisplay(recordDate) || this.escapeHtml(recordDate || ''))}</td>
@@ -578,7 +602,7 @@ class TrackingManager {
 
                 historyRowHtml = `
                     <tr class="row-history">
-                        <td class="td-id">ARCHIVE (OLD)</td>
+                        <td class="td-selection"></td>
                         <td class="td-name">${this.escapeHtml(ph['Name'] || '')} ${this.escapeHtml(ph['Surname'] || '')}</td>
                         <td class="td-school">${this.escapeHtml(ph['School'] || '')}</td>
                         <td class="td-date">${formatDateDisplay(phRecordDate)}</td>
@@ -609,6 +633,7 @@ class TrackingManager {
         }).join('');
 
         this.updatePagination(start + 1, end, this.filteredData.length);
+        this.updateBulkActionBar();
     }
 
     updatePagination(from, to, total) {
@@ -1040,8 +1065,116 @@ class TrackingManager {
         return div.innerHTML;
     }
 
+
     escapeAttr(text) {
         return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // Selection Management
+    toggleSelection(rowUid, isSelected) {
+        if (isSelected) {
+            this.selectedRows.add(rowUid);
+        } else {
+            this.selectedRows.delete(rowUid);
+        }
+        
+        // Find the row and update its selected class without full re-render
+        const tr = document.querySelector(`#tracking-table-body tr[data-uid="${rowUid}"]`);
+        if (tr) {
+            if (isSelected) tr.classList.add('selected');
+            else tr.classList.remove('selected');
+        }
+
+        this.updateBulkActionBar();
+    }
+
+    toggleSelectAll(isSelected) {
+        // Collect all currently filtered data UIDs
+        if (isSelected) {
+            this.filteredData.forEach(row => this.selectedRows.add(row.row_uid));
+        } else {
+            this.selectedRows.clear();
+        }
+
+        this.renderTable();
+        this.updateBulkActionBar();
+    }
+
+    clearSelection() {
+        this.selectedRows.clear();
+        const selectAll = document.getElementById('select-all-checkbox');
+        if (selectAll) selectAll.checked = false;
+        this.renderTable();
+        this.updateBulkActionBar();
+    }
+
+    updateBulkActionBar() {
+        const bar = document.getElementById('bulk-actions-bar');
+        const count = document.getElementById('selected-count');
+        const totalSelected = this.selectedRows.size;
+
+        if (totalSelected > 0) {
+            bar.style.display = 'flex';
+            count.textContent = totalSelected;
+        } else {
+            bar.style.display = 'none';
+        }
+
+        // Update select-all checkbox state based on visible rows
+        const selectAll = document.getElementById('select-all-checkbox');
+        if (selectAll) {
+            const start = (this.currentPage - 1) * this.pageSize;
+            const end = Math.min(start + this.pageSize, this.filteredData.length);
+            const pageData = this.filteredData.slice(start, end);
+            
+            if (pageData.length > 0) {
+                const allPageSelected = pageData.every(row => this.selectedRows.has(row.row_uid));
+                selectAll.checked = allPageSelected;
+            } else {
+                selectAll.checked = false;
+            }
+        }
+    }
+
+    async bulkUpdateStatus() {
+        const newStatus = document.getElementById('bulk-status-select').value;
+        if (!newStatus) {
+            showToast('Lütfen bir durum seçin.', 'warning');
+            return;
+        }
+
+        const count = this.selectedRows.size;
+        if (!confirm(`${count} adet kaydın durumunu "${newStatus}" olarak değiştirmek istediğinize emin misiniz?`)) {
+            return;
+        }
+
+        try {
+            const uids = Array.from(this.selectedRows);
+            showToast(`${count} kayıt güncelleniyor...`, 'info');
+
+            for (const uid of uids) {
+                const tracking = await crmDB.getTracking(uid) || { row_uid: uid };
+                tracking.status = newStatus;
+                await crmDB.putTracking(tracking);
+
+                const row = this.data.find(r => r.row_uid === uid);
+                if (row) {
+                    if (!row._tracking) row._tracking = {};
+                    row._tracking.status = newStatus;
+                }
+            }
+
+            this.selectedRows.clear();
+            const selectAll = document.getElementById('select-all-checkbox');
+            if (selectAll) selectAll.checked = false;
+            
+            this.renderTable();
+            this.updateBulkActionBar();
+            showToast(`${count} kayıt başarıyla güncellendi.`, 'success');
+        } catch (error) {
+            console.error('Bulk update error:', error);
+            showToast('Toplu güncelleme sırasında hata oluştu.', 'error');
+        }
     }
 }
 
@@ -1088,3 +1221,4 @@ document.addEventListener('click', (e) => {
         if (dropdown) dropdown.style.display = 'none';
     }
 });
+
