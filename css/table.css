@@ -112,7 +112,7 @@
 }
 
 .data-table th.th-number {
-    text-align: right;
+    /* Centered by default th style */
 }
 
 .data-table th.th-sticky {
@@ -166,28 +166,41 @@
     white-space: normal;
 }
 
-.data-table th.th-date,
+.data-table th.th-date {
+    width: 70px;
+    min-width: 70px;
+}
 .data-table td.td-date {
-    width: 90px;
-    min-width: 90px;
+    width: 70px;
+    min-width: 70px;
     text-align: center;
+    font-size: 0.85rem;
 }
 
 .data-table th.th-status,
 .data-table td.td-status {
-    width: 100px;
-    min-width: 100px;
+    width: 85px;
+    min-width: 85px;
+    max-width: 85px;
     text-align: center;
+    padding: 8px 4px !important;
 }
 
-.data-table th.th-currency,
+.data-table th.th-currency {
+    width: 60px;
+    min-width: 60px;
+}
 .data-table td.td-currency {
     width: 60px;
     min-width: 60px;
     text-align: center;
 }
 
-.data-table th.th-number,
+.data-table th.th-number {
+    width: 95px;
+    min-width: 95px;
+    /* Centers and uses 600 weight from base th rule */
+}
 .data-table td.td-number {
     width: 95px;
     min-width: 95px;

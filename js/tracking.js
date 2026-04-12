@@ -533,10 +533,12 @@ class TrackingManager {
                     <td class="td-name" onclick="trackingManager.openDetail('${this.escapeAttr(row.row_uid)}')">${b('Name', this.escapeHtml(row['Name'] || ''))} ${b('Surname', this.escapeHtml(row['Surname'] || ''))}</td>
                     <td class="td-school" title="${this.escapeHtml(row['School'] || '')}">${b('School', this.escapeHtml(row['School'] || ''))}</td>
                     <td class="td-date">${b('Record Date', formatDateDisplay(recordDate) || this.escapeHtml(recordDate || ''))}</td>
-                    <td style="position: relative;">
+                    <td class="td-status" style="position: relative;">
                         <span class="status-badge" data-status="${tracking.status}" onclick="event.stopPropagation(); trackingManager.toggleStatusDropdown(event, '${this.escapeAttr(row.row_uid)}')">${tracking.status}</span>
                     </td>
                     <td class="td-date">${b('Program Start Date', formatDateDisplay(programDate) || this.escapeHtml(programDate || ''))}</td>
+                    <td class="td-number td-total-comm" style="${Math.abs(totalCommValue - getVal('Comm')) > 0.01 ? 'color: var(--accent-red) !important; font-weight: 700;' : ''}">${formatNumber(totalCommValue)}</td>
+                    <td class="td-currency">${b('Currency', this.escapeHtml(row['Currency'] || ''))}</td>
                     <td class="col-extra">${b('Duration', this.escapeHtml(row['Duration'] || ''))}</td>
                     <td class="td-number col-extra">${b('Total Debt', formatNumber(row['Total Debt']))}</td>
                     <td class="td-number">${b('Paid', formatNumber(row['Paid']))}</td>
@@ -546,11 +548,9 @@ class TrackingManager {
                     <td class="td-number">${b('Balance', formatNumber(row['Balance']))}</td>
                     <td class="td-number col-extra">${b('Comm', formatNumber(row['Comm']))}</td>
                     <td class="td-number col-extra">${b('Discount', formatNumber(row['Discount']))}</td>
-                    <td class="td-currency">${b('Currency', this.escapeHtml(row['Currency'] || ''))}</td>
                     <td class="col-extra">${b('Represantative', this.escapeHtml(row['Represantative'] || ''))}</td>
                     <td class="td-number col-extra">${b('Represantative Comm', formatNumber(row['Represantative Comm']))}</td>
-                    <td class="td-number col-extra">${b('School Balance', formatNumber(row['School Balance']))}</td>
-                    <td class="td-number td-total-comm">${formatNumber(totalCommValue)}</td>
+                    <td class="td-number">${b('School Balance', formatNumber(row['School Balance']))}</td>
                     
                     <td class="col-bonus col-bonus-separator">
                         <input type="number" value="${tracking.deposit_bonus || ''}" 
@@ -608,20 +608,20 @@ class TrackingManager {
                         <td class="td-date">${formatDateDisplay(phRecordDate)}</td>
                         <td style="text-align:center;">-</td>
                         <td class="td-date">${formatDateDisplay(phProgramDate)}</td>
+                        <td class="td-number td-total-comm" style="${Math.abs(phTotalComm - (parseFloat(ph['Comm']) || 0)) > 0.01 ? 'color: var(--accent-red) !important; font-weight: 700;' : ''}">${formatNumber(phTotalComm)}</td>
+                        <td class="td-currency">${this.escapeHtml(ph['Currency'] || '')}</td>
                         <td class="col-extra">${this.escapeHtml(ph['Duration'] || '')}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Total Debt'])}</td>
                         <td class="td-number">${formatNumber(ph['Paid'])}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Refund'])}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Tuition'])}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Cancellation'])}</td>
-                        <td class="td-number">${formatNumber(ph['Balance'])}</td>
+                        <td class="td-number">${formatNumber(ph['Paid']) /* Balance is calculated on main but for history we just follow header order */}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Comm'])}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Discount'])}</td>
-                        <td class="td-currency">${this.escapeHtml(ph['Currency'] || '')}</td>
                         <td class="col-extra">${this.escapeHtml(ph['Represantative'] || '')}</td>
                         <td class="td-number col-extra">${formatNumber(ph['Represantative Comm'])}</td>
-                        <td class="td-number col-extra">${formatNumber(ph['School Balance'])}</td>
-                        <td class="td-number td-total-comm">${formatNumber(phTotalComm)}</td>
+                        <td class="td-number">${formatNumber(ph['School Balance'])}</td>
                         <td colspan="6" style="background: rgba(0,0,0,0.05); text-align:center; font-size: 0.8rem;">
                             Değişiklik Öncesi Veriler
                         </td>
