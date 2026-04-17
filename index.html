@@ -258,6 +258,9 @@
                                 </button>
                                 <div class="status-multiselect-dropdown" id="status-multiselect-dropdown"
                                     style="display:none;">
+                                    <label class="status-checkbox-item status-select-all" style="border-bottom: 1px solid var(--border-primary); margin-bottom: 4px; padding-bottom: 8px; font-weight: bold;">
+                                        <input type="checkbox" id="status-select-all" onchange="toggleAllStatuses(this)"> Tümünü Seç
+                                    </label>
                                     <label class="status-checkbox-item"><input type="checkbox" value="Process"
                                             onchange="applyStatusFilter()"> Process</label>
                                     <label class="status-checkbox-item"><input type="checkbox" value="Visa"
@@ -332,7 +335,7 @@
                         <input type="checkbox" id="toggle-archive-view" checked>
                         <span>Arşivi Gizle</span>
                     </label>
-                    <button class="btn btn-ghost btn-sm" id="btn-clear-filters">Filtreleri Temizle</button>
+                    <button class="btn btn-outline btn-sm" id="btn-clear-filters" style="margin-left: auto;">Filtreleri Temizle</button>
             </div>
             
             <!-- Bulk Actions Bar -->

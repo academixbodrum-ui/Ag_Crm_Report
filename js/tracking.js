@@ -1372,16 +1372,34 @@ function toggleStatusFilter() {
     dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
 }
 
+function toggleAllStatuses(source) {
+    const checkboxes = document.querySelectorAll('#status-multiselect-dropdown .status-checkbox-item:not(.status-select-all) input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = source.checked;
+    });
+    applyStatusFilter();
+}
+
 function getSelectedStatuses() {
-    const checkboxes = document.querySelectorAll('#status-multiselect-dropdown input[type="checkbox"]:checked');
+    const checkboxes = document.querySelectorAll('#status-multiselect-dropdown .status-checkbox-item:not(.status-select-all) input[type="checkbox"]:checked');
     return Array.from(checkboxes).map(cb => cb.value);
 }
 
 function applyStatusFilter() {
     const selected = getSelectedStatuses();
+    const allCheckboxes = document.querySelectorAll('#status-multiselect-dropdown .status-checkbox-item:not(.status-select-all) input[type="checkbox"]');
+    const selectAllCb = document.getElementById('status-select-all');
+    
+    // Update Select All checkbox state
+    if (selectAllCb) {
+        selectAllCb.checked = (selected.length === allCheckboxes.length && allCheckboxes.length > 0);
+    }
+
     const btn = document.getElementById('status-multiselect-btn');
     if (selected.length === 0) {
         btn.textContent = 'Durum Seç ▾';
+    } else if (selected.length === allCheckboxes.length) {
+        btn.textContent = 'Tümü Seçili ▾';
     } else if (selected.length === 1) {
         btn.textContent = selected[0] + ' ▾';
     } else {

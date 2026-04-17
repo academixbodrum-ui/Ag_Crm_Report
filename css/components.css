@@ -466,6 +466,23 @@
     cursor: pointer;
 }
 
+.status-select-all:hover {
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Clear Filters Button Prominence */
+#btn-clear-filters {
+    border-color: var(--accent-red);
+    color: var(--accent-red-light);
+    transition: all var(--transition-normal);
+}
+
+#btn-clear-filters:hover {
+    background: var(--accent-red);
+    color: white;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
 /* ==========================================
    STATUS BADGES
    ========================================== */
