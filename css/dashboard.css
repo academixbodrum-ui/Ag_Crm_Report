@@ -102,6 +102,14 @@
     background: linear-gradient(90deg, var(--accent-red), transparent);
 }
 
+#kpi-bonus-usd-comm::before {
+    background: linear-gradient(90deg, var(--accent-purple), transparent);
+}
+
+#kpi-bonus-total-rows::before {
+    background: linear-gradient(90deg, var(--accent-blue), transparent);
+}
+
 .kpi-data {
     display: flex;
     flex-direction: column;

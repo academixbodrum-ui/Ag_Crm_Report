@@ -24,6 +24,7 @@ class SupabaseClient {
     async _fetch(endpoint, options = {}) {
         const res = await fetch(`${this.restUrl}${endpoint}`, {
             ...options,
+            cache: 'no-store', // Disable caching completely for live CRM data
             headers: { ...this.headers, ...(options.headers || {}) }
         });
         if (!res.ok) {
@@ -272,6 +273,16 @@ class CrmDatabase {
     async putTracking(tracking) {
         tracking.last_touched_at = new Date().toISOString();
         await supabase.upsert('crm_tracking', tracking, 'row_uid');
+    }
+
+    async putTrackings(trackings) {
+        const now = new Date().toISOString();
+        const chunkSize = 50;
+        for (let i = 0; i < trackings.length; i += chunkSize) {
+            const chunk = trackings.slice(i, i + chunkSize);
+            chunk.forEach(t => t.last_touched_at = now);
+            await supabase.upsert('crm_tracking', chunk, 'row_uid');
+        }
     }
 
     async createTrackingIfNotExists(row_uid) {

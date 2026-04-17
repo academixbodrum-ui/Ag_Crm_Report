@@ -13,6 +13,7 @@ class TrackingManager {
         this.activeStatusDropdown = null;
         this.hideArchive = true; // Default: archive hidden
         this.selectedRows = new Set();
+        this.currencyHistory = {}; // monthYear -> { currencyCode -> rate }
 
         // DOM refs
         this.tableBody = document.getElementById('tracking-table-body');
@@ -183,8 +184,26 @@ class TrackingManager {
 
     async loadData() {
         this.data = await crmDB.getJoinedData();
+        await this.loadCurrencyHistory();
         await this.populateFilterOptions();
         this.applyFilters();
+    }
+
+    async loadCurrencyHistory() {
+        try {
+            const results = await crmDB.supabase.select('currencies', 'limit=10000');
+            this.currencyHistory = {};
+            (results || []).forEach(row => {
+                if (!this.currencyHistory[row.month_year]) {
+                    this.currencyHistory[row.month_year] = {};
+                }
+                this.currencyHistory[row.month_year][row.code] = parseFloat(row.rate) || 1;
+            });
+            console.log('Currency history loaded:', Object.keys(this.currencyHistory).length, 'months');
+        } catch (e) {
+            console.error('Failed to load currency history:', e);
+            this.currencyHistory = {};
+        }
     }
 
     async populateFilterOptions() {
@@ -210,6 +229,18 @@ class TrackingManager {
 
             if (currentVal) select.value = currentVal;
         }
+    }
+
+    getTurkishMonthYear(dateStr) {
+        if (!dateStr) return null;
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null;
+
+        const months = [
+            'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+            'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+        ];
+        return `${months[date.getMonth()]} ${date.getFullYear()}`;
     }
 
     applyFilters() {
@@ -498,6 +529,7 @@ class TrackingManager {
 
             // Evaluate visual rules
             let rowStyle = '';
+            let nameColStyle = '';
             if (window.visualRules) {
                 for (const rule of window.visualRules) {
                     if (rule.status_cond && rule.status_cond !== tracking.status) continue;
@@ -514,14 +546,33 @@ class TrackingManager {
                     else if (rule.operator_cond === '<=') match = (val <= target);
                     
                     if (match) {
-                        rowStyle = `background-color: ${rule.color}33 !important;`; // 20% alpha
+                        // Function to get RGB string
+                        let hex = rule.color || '#3b82f6';
+                        let r = 0, g = 0, b = 0;
+                        if (hex.length === 4) {
+                            r = parseInt(hex[1] + hex[1], 16);
+                            g = parseInt(hex[2] + hex[2], 16);
+                            b = parseInt(hex[3] + hex[3], 16);
+                        } else if (hex.length === 7) {
+                            r = parseInt(hex[1] + hex[2], 16);
+                            g = parseInt(hex[3] + hex[4], 16);
+                            b = parseInt(hex[5] + hex[6], 16);
+                        }
+                        
+                        // Uniform color regardless of row index
+                        rowStyle = `background: rgba(${r}, ${g}, ${b}, 0.25) !important;`; 
+                        nameColStyle = `background: rgba(${r}, ${g}, ${b}, 0.35) !important;`;
                     }
                 }
             }
 
+            // Exclude dynamic rule styling for statuses that have hardcoded CSS rules (if preferred)
+            // But since our CSS uses [data-row-status] + !important, inline styles from visualRules 
+            // will already be overridden for statuses defined in table.css.
+            
             // MAIN ROW HTML
             const mainRowHtml = `
-                <tr class="${isMissing ? 'row-missing' : ''} ${this.selectedRows.has(row.row_uid) ? 'selected' : ''} ${globalIdx % 2 === 1 ? 'zebra-row' : ''}" 
+                <tr class="${isMissing ? 'row-missing' : ''} ${this.selectedRows.has(row.row_uid) ? 'selected' : ''}" 
                     data-uid="${this.escapeHtml(row.row_uid)}" 
                     data-index="${globalIdx}"
                     data-row-status="${tracking.status}"
@@ -533,7 +584,7 @@ class TrackingManager {
                             onchange="trackingManager.toggleSelection('${this.escapeAttr(row.row_uid)}', this.checked)">
                     </td>
 
-                    <td class="td-name" onclick="trackingManager.openDetail('${this.escapeAttr(row.row_uid)}')">${b('Name', this.escapeHtml(row['Name'] || ''))} ${b('Surname', this.escapeHtml(row['Surname'] || ''))}</td>
+                    <td class="td-name" style="${nameColStyle}" onclick="trackingManager.openDetail('${this.escapeAttr(row.row_uid)}')">${b('Name', this.escapeHtml(row['Name'] || ''))} ${b('Surname', this.escapeHtml(row['Surname'] || ''))}</td>
                     <td class="td-school" title="${this.escapeHtml(row['School'] || '')}">${b('School', this.escapeHtml(row['School'] || ''))}</td>
                     <td class="td-date">${b('Record Date', formatDateDisplay(recordDate) || this.escapeHtml(recordDate || ''))}</td>
                     <td class="td-status" style="position: relative;">
@@ -548,6 +599,39 @@ class TrackingManager {
                                 style="width: 100%; border: none; background: transparent; text-align: right; color: inherit; font: inherit; padding: 0;">` 
                             : formatNumber(totalCommValue)
                         }
+                    </td>
+                    <td class="td-number td-usd-comm">
+                        ${(() => {
+                            const monthYear = this.getTurkishMonthYear(recordDate);
+                            const currency = row['Currency'];
+                            
+                            // Try exact match first
+                            let rate = (this.currencyHistory[monthYear] && this.currencyHistory[monthYear][currency]) || null;
+                            
+                            // Fallback: If not found, look for the most recent month that has this currency
+                            if (!rate) {
+                                const allMonths = Object.keys(this.currencyHistory).sort((a, b) => {
+                                    // Sort months to find the latest
+                                    // (This is a simplified sort - ideally we'd parse and compare but usually latest saved is best)
+                                    return b.localeCompare(a); 
+                                });
+                                for (const m of allMonths) {
+                                    if (this.currencyHistory[m][currency]) {
+                                        rate = this.currencyHistory[m][currency];
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (tracking.status === 'Cancelled') {
+                                return formatNumber(0);
+                            }
+                            
+                            if (rate && totalCommValue) {
+                                return formatNumber(totalCommValue / rate);
+                            }
+                            return '0,00';
+                        })()}
                     </td>
                     <td class="td-currency">${b('Currency', this.escapeHtml(row['Currency'] || ''))}</td>
                     <td class="col-extra">${b('Duration', this.escapeHtml(row['Duration'] || ''))}</td>
@@ -625,6 +709,26 @@ class TrackingManager {
                         <td class="td-date">${formatDateDisplay(phProgramDate)}</td>
                         <td class="td-number td-total-comm" style="${phIsManual ? 'color: var(--accent-red) !important; font-weight: 700;' : (Math.abs(phTotalComm - (parseFloat(ph['Comm']) || 0)) > 0.01 ? 'color: var(--accent-amber) !important; font-weight: 700;' : '')}">
                             ${phIsManual ? formatNumber(phManualComm) : formatNumber(phTotalComm)}
+                        </td>
+                        <td class="td-number td-usd-comm">
+                            ${(() => {
+                                const monthYear = this.getTurkishMonthYear(phRecordDate);
+                                const currency = ph['Currency'] || row['Currency'];
+                                // Try exact match first
+                                let rate = (this.currencyHistory[monthYear] && this.currencyHistory[monthYear][currency]) || null;
+                                // Fallback: latest available for this currency
+                                if (!rate) {
+                                    const allMonths = Object.keys(this.currencyHistory).sort((a, b) => b.localeCompare(a));
+                                    for (const m of allMonths) {
+                                        if (this.currencyHistory[m][currency]) {
+                                            rate = this.currencyHistory[m][currency];
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (rate && phTotalComm) return formatNumber(phTotalComm / rate);
+                                return '-';
+                            })()}
                         </td>
                         <td class="td-currency">${this.escapeHtml(ph['Currency'] || '')}</td>
                         <td class="col-extra">${this.escapeHtml(ph['Duration'] || '')}</td>
@@ -758,7 +862,10 @@ class TrackingManager {
             const row = this.data.find(r => r.row_uid === rowUid);
             if (row) row._tracking.status = newStatus;
 
-            this.renderTable();
+            // Clear selection for this record
+            this.selectedRows.delete(rowUid);
+            
+            this.applyFilters();
             showToast(`Durum "${newStatus}" olarak güncellendi.`, 'success');
         }
     }
@@ -972,7 +1079,8 @@ class TrackingManager {
         }
 
         document.getElementById('detail-modal').style.display = 'none';
-        this.renderTable();
+        this.selectedRows.delete(rowUid);
+        this.applyFilters();
         showToast('Takip bilgileri kaydedildi.', 'success');
     }
 
@@ -988,7 +1096,7 @@ class TrackingManager {
             'Employee', 'Processor', 'Program',
             'Record Date', 'Program Start Date', 'Duration',
             'Total Debt', 'Paid', 'Refund', 'Tuition',
-            'Cancellation', 'Balance', 'Comm', 'Discount',
+            'Net Komisyon', 'USD Net Komisyon',
             'Currency', 'Represantative', 'Represantative Comm', 'School Balance',
             'Status', 'Status Reason', 'Notes', 'Follow-Up Date', 'Owner',
             'Deposit Bonus', 'Deposit Bonus Status', 'Consultant Bonus', 'Consultant Bonus Status'
@@ -1004,6 +1112,29 @@ class TrackingManager {
                 row['Duration'] || '',
                 row['Total Debt'] || 0, row['Paid'] || 0, row['Refund'] || 0, row['Tuition'] || 0,
                 row['Cancellation'] || 0, row['Balance'] || 0, row['Comm'] || 0, row['Discount'] || 0,
+                (() => {
+                    const csvCalc = (parseFloat(row['Comm']) || 0) + (parseFloat(row['Cancellation']) || 0) - (parseFloat(row['Discount']) || 0) - (parseFloat(row['Represantative Comm']) || 0);
+                    const manualComm = tracking.manual_net_commission ? parseFloat(tracking.manual_net_commission) : 0;
+                    return (csvCalc !== 0) ? csvCalc : manualComm;
+                })(),
+                (() => {
+                    const csvCalc = (parseFloat(row['Comm']) || 0) + (parseFloat(row['Cancellation']) || 0) - (parseFloat(row['Discount']) || 0) - (parseFloat(row['Represantative Comm']) || 0);
+                    const manualComm = tracking.manual_net_commission ? parseFloat(tracking.manual_net_commission) : 0;
+                    const totalComm = (csvCalc !== 0) ? csvCalc : manualComm;
+                    const monthYear = this.getTurkishMonthYear(row['Record Date']);
+                    const currency = row['Currency'];
+                    let rate = (this.currencyHistory[monthYear] && this.currencyHistory[monthYear][currency]) || null;
+                    if (!rate) {
+                        const allMonths = Object.keys(this.currencyHistory).sort((a, b) => b.localeCompare(a));
+                        for (const m of allMonths) {
+                            if (this.currencyHistory[m][currency]) {
+                                rate = this.currencyHistory[m][currency];
+                                break;
+                            }
+                        }
+                    }
+                    return (rate && totalComm) ? (totalComm / rate).toFixed(2) : '-';
+                })(),
                 row['Currency'] || '', row['Represantative'] || '', row['Represantative Comm'] || 0,
                 row['School Balance'] || 0,
                 tracking.status || '', tracking.status_reason || '', tracking.notes || '',
@@ -1043,6 +1174,7 @@ class TrackingManager {
             'Record Date', 'Program Start Date', 'Duration',
             'Total Debt', 'Paid', 'Refund', 'Tuition',
             'Cancellation', 'Balance', 'Comm', 'Discount',
+            'Net Komisyon', 'USD Net Komisyon',
             'Currency', 'Represantative', 'Represantative Comm', 'School Balance',
             'Status', 'Status Reason', 'Notes', 'Follow-Up Date', 'Owner'
         ];
@@ -1056,6 +1188,29 @@ class TrackingManager {
                 row['Duration'] || '',
                 row['Total Debt'] ?? '', row['Paid'] ?? '', row['Refund'] ?? '', row['Tuition'] ?? '',
                 row['Cancellation'] ?? '', row['Balance'] ?? '', row['Comm'] ?? '', row['Discount'] ?? '',
+                (() => {
+                    const csvCalc = (parseFloat(row['Comm']) || 0) + (parseFloat(row['Cancellation']) || 0) - (parseFloat(row['Discount']) || 0) - (parseFloat(row['Represantative Comm']) || 0);
+                    const manualComm = (row._tracking && row._tracking.manual_net_commission) ? parseFloat(row._tracking.manual_net_commission) : 0;
+                    return (csvCalc !== 0) ? csvCalc : manualComm;
+                })(),
+                (() => {
+                    const csvCalc = (parseFloat(row['Comm']) || 0) + (parseFloat(row['Cancellation']) || 0) - (parseFloat(row['Discount']) || 0) - (parseFloat(row['Represantative Comm']) || 0);
+                    const manualComm = (row._tracking && row._tracking.manual_net_commission) ? parseFloat(row._tracking.manual_net_commission) : 0;
+                    const totalComm = (csvCalc !== 0) ? csvCalc : manualComm;
+                    const monthYear = this.getTurkishMonthYear(row['Record Date']);
+                    const currency = row['Currency'];
+                    let rate = (this.currencyHistory[monthYear] && this.currencyHistory[monthYear][currency]) || null;
+                    if (!rate) {
+                        const allMonths = Object.keys(this.currencyHistory).sort((a, b) => b.localeCompare(a));
+                        for (const m of allMonths) {
+                            if (this.currencyHistory[m][currency]) {
+                                rate = this.currencyHistory[m][currency];
+                                break;
+                            }
+                        }
+                    }
+                    return (rate && totalComm) ? (totalComm / rate).toFixed(2) : '-';
+                })(),
                 row['Currency'] || '', row['Represantative'] || '', row['Represantative Comm'] ?? '',
                 row['School Balance'] ?? '',
                 row._tracking.status, row._tracking.status_reason || '', row._tracking.notes || '',
@@ -1154,43 +1309,49 @@ class TrackingManager {
     }
 
     async bulkUpdateStatus() {
-        const newStatus = document.getElementById('bulk-status-select').value;
-        if (!newStatus) {
-            showToast('Lütfen bir durum seçin.', 'warning');
-            return;
-        }
-
-        const count = this.selectedRows.size;
-        if (!confirm(`${count} adet kaydın durumunu "${newStatus}" olarak değiştirmek istediğinize emin misiniz?`)) {
-            return;
-        }
-
         try {
+            const newStatus = document.getElementById('bulk-status-select').value;
+            if (!newStatus) {
+                showToast('Lütfen bir durum seçin.', 'warning');
+                return;
+            }
+
             const uids = Array.from(this.selectedRows);
-            showToast(`${count} kayıt güncelleniyor...`, 'info');
+            if (uids.length === 0) return;
 
+            if (!confirm(`${uids.length} adet kaydın durumunu "${newStatus}" olarak değiştirmek istediğinize emin misiniz?`)) {
+                return;
+            }
+
+            showToast(`${uids.length} kayıt güncelleniyor...`, 'info');
+
+            const trackingsToUpdate = [];
             for (const uid of uids) {
-                const tracking = await crmDB.getTracking(uid) || { row_uid: uid };
-                tracking.status = newStatus;
-                await crmDB.putTracking(tracking);
-
-                const row = this.data.find(r => r.row_uid === uid);
+                const row = this.data.find(r => String(r.row_uid) === String(uid));
                 if (row) {
-                    if (!row._tracking) row._tracking = {};
+                    const tracking = { ...(row._tracking || {}) };
+                    tracking.row_uid = row.row_uid;
+                    tracking.status = newStatus;
+                    trackingsToUpdate.push(tracking);
+                    
+                    if (!row._tracking) row._tracking = { status: '' };
                     row._tracking.status = newStatus;
                 }
+            }
+
+            if (trackingsToUpdate.length > 0) {
+                await crmDB.putTrackings(trackingsToUpdate);
             }
 
             this.selectedRows.clear();
             const selectAll = document.getElementById('select-all-checkbox');
             if (selectAll) selectAll.checked = false;
             
-            this.renderTable();
-            this.updateBulkActionBar();
-            showToast(`${count} kayıt başarıyla güncellendi.`, 'success');
+            this.applyFilters();
+            showToast(`${trackingsToUpdate.length} kayıt başarıyla güncellendi.`, 'success');
         } catch (error) {
             console.error('Bulk update error:', error);
-            showToast('Toplu güncelleme sırasında hata oluştu.', 'error');
+            alert('HATA: ' + error.message);
         }
     }
 }

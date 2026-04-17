@@ -5,9 +5,7 @@
 
 class StatusRulesManager {
     constructor() {
-        this.matrixEl = document.getElementById('status-rules-matrix');
         this.visualRulesListEl = document.getElementById('visual-rules-list');
-        this.rules = {}; // status -> { field_name: { visible: bool, required: bool } }
         this.visualRules = []; // list of { id, status_cond, field_cond, operator_cond, value_cond, color }
         
         // Define fields to be managed (from csv-parser and tracking)
@@ -29,126 +27,42 @@ class StatusRulesManager {
 
     async loadData() {
         try {
-            this.matrixEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Yükleniyor...</div>';
             this.visualRulesListEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Yükleniyor...</div>';
             
-            // 1. Fetch from DB
-            const [statusResults, visualResults] = await Promise.all([
-                crmDB.supabase.select('status_rules'),
-                crmDB.supabase.select('visual_rules')
-            ]);
+            // 1. Fetch from DB directly to ensure fresh state
+            const visualResults = await crmDB.supabase.select('visual_rules', 'order=created_at.asc');
+            console.log('DEBUG Visual Rules Load:', visualResults);
 
-            this.rules = {};
+            this.visualRules = (visualResults || []).map(r => ({
+                id: r.id,
+                status_cond: r.status_cond || '',
+                field_cond: r.field_cond,
+                operator_cond: r.operator_cond,
+                value_cond: r.value_cond,
+                color: r.color
+            }));
             
-            // Initialize with all statuses
-            STATUSES.forEach(s => {
-                this.rules[s] = {};
-                this.fields.forEach(f => {
-                    this.rules[s][f] = { visible: true, required: false };
-                });
-            });
+            // Sync global state immediately
+            window.visualRules = [...this.visualRules];
 
-            // Override with DB data
-            if (statusResults && Array.isArray(statusResults)) {
-                statusResults.forEach(item => {
-                    if (this.rules[item.status]) {
-                        this.rules[item.status] = { ...this.rules[item.status], ...(item.rules || {}) };
-                    }
-                });
-            }
-
-            this.visualRules = visualResults || [];
-            if (this.visualRules.length === 0) {
-                // Add default requested rule if none exists
-                this.visualRules.push({
-                    id: 'default-1',
-                    status_cond: 'Completed',
-                    field_cond: 'total_commission',
-                    operator_cond: '==',
-                    value_cond: '0',
-                    color: '#ef4444' // Red
-                });
-            }
-
-            // Global access
-            window.statusRules = this.rules;
-            window.visualRules = this.visualRules;
-
-            this.render();
             this.renderVisualRules();
         } catch (error) {
-            console.error('Status rules load error:', error);
-            this.matrixEl.innerHTML = `<div class="alert alert-error">Kurallar yüklenemedi: ${error.message}</div>`;
+            console.error('Visual rules load error:', error);
+            this.visualRulesListEl.innerHTML = `<div class="alert alert-error">Kurallar yüklenemedi: ${error.message}</div>`;
         }
     }
 
-    render() {
-        let html = `
-            <table class="data-table" style="font-size: 0.75rem;">
-                <thead>
-                    <tr>
-                        <th style="position: sticky; left: 0; background: var(--bg-tertiary); z-index: 20;">Alan / Durum</th>
-        `;
 
-        STATUSES.forEach(s => {
-            html += `<th colspan="2" style="text-align: center;">${s}</th>`;
-        });
-
-        html += `
-                    </tr>
-                    <tr>
-                        <th style="position: sticky; left: 0; background: var(--bg-tertiary); z-index: 20;"></th>
-        `;
-
-        STATUSES.forEach(s => {
-            html += `
-                <th style="font-size: 0.65rem; padding: 4px;">Gör.</th>
-                <th style="font-size: 0.65rem; padding: 4px;">Zor.</th>
-            `;
-        });
-
-        html += `
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        this.fields.forEach(field => {
-            html += `
-                <tr>
-                    <td style="position: sticky; left: 0; background: var(--bg-card); z-index: 10; font-weight: 500;">${field}</td>
-            `;
-
-            STATUSES.forEach(status => {
-                const rule = this.rules[status][field] || { visible: true, required: false };
-                html += `
-                    <td style="text-align: center;">
-                        <input type="checkbox" ${rule.visible ? 'checked' : ''} 
-                            onchange="updateStatusRule('${status}', '${field}', 'visible', this.checked)">
-                    </td>
-                    <td style="text-align: center;">
-                        <input type="checkbox" ${rule.required ? 'checked' : ''} 
-                            onchange="updateStatusRule('${status}', '${field}', 'required', this.checked)">
-                    </td>
-                `;
-            });
-
-            html += `
-                </tr>
-            `;
-        });
-
-        html += `
-                </tbody>
-            </table>
-        `;
-
-        this.matrixEl.innerHTML = html;
-    }
 
     renderVisualRules() {
+        if (!this.visualRulesListEl) return;
+        
         if (this.visualRules.length === 0) {
-            this.visualRulesListEl.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Kural bulunamadı. "Kural Oluştur" butonu ile yeni kural ekleyebilirsiniz.</div>';
+            this.visualRulesListEl.innerHTML = `
+                <div style="text-align:center; padding: 40px; border: 1px dashed var(--border-primary); border-radius: var(--radius-md); background: rgba(255,255,255,0.01);">
+                    <div style="color: var(--text-tertiary); margin-bottom: 12px;">Henüz tanımlanmış bir görsel kural bulunmuyor.</div>
+                    <button class="btn btn-outline btn-sm" onclick="addVisualRule()">+ Yeni Kural Ekle</button>
+                </div>`;
             return;
         }
 
@@ -156,51 +70,53 @@ class StatusRulesManager {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Durum Koşulu</th>
-                        <th>Alan</th>
-                        <th>Koşul</th>
+                        <th style="width: 180px;">Durum</th>
+                        <th style="width: 200px;">Alan</th>
+                        <th style="width: 120px;">Koşul</th>
                         <th>Değer</th>
-                        <th>Renk</th>
-                        <th style="width: 50px;"></th>
+                        <th style="width: 80px; text-align: center;">Renk</th>
+                        <th style="width: 60px;"></th>
                     </tr>
                 </thead>
                 <tbody>
         `;
 
-        this.visualRules.forEach((rule, idx) => {
+        this.visualRules.forEach((rule) => {
             html += `
                 <tr>
                     <td>
-                        <select onchange="updateVisualRule('${rule.id}', 'status_cond', this.value)">
-                            <option value="">Herhangi</option>
+                        <select onchange="updateVisualRule('${rule.id}', 'status_cond', this.value)" style="width: 100%;">
+                            <option value="">Hero (Herhangi)</option>
                             ${STATUSES.map(s => `<option value="${s}" ${rule.status_cond === s ? 'selected' : ''}>${s}</option>`).join('')}
                         </select>
                     </td>
                     <td>
-                        <select onchange="updateVisualRule('${rule.id}', 'field_cond', this.value)">
+                        <select onchange="updateVisualRule('${rule.id}', 'field_cond', this.value)" style="width: 100%;">
                             ${this.visualFields.map(f => `<option value="${f}" ${rule.field_cond === f ? 'selected' : ''}>${f}</option>`).join('')}
                         </select>
                     </td>
                     <td>
-                        <select onchange="updateVisualRule('${rule.id}', 'operator_cond', this.value)">
-                            <option value="==" ${rule.operator_cond === '==' || rule.operator_cond === '=' ? 'selected' : ''}>= (Eşittir)</option>
-                            <option value=">=" ${rule.operator_cond === '>=' ? 'selected' : ''}>&gt;= (Büyük veya Eşittir)</option>
-                            <option value="<=" ${rule.operator_cond === '<=' ? 'selected' : ''}>&lt;= (Küçük veya Eşittir)</option>
-                            <option value=">" ${rule.operator_cond === '>' ? 'selected' : ''}>&gt; (Büyüktür)</option>
-                            <option value="<" ${rule.operator_cond === '<' ? 'selected' : ''}>&lt; (Küçüktür)</option>
+                        <select onchange="updateVisualRule('${rule.id}', 'operator_cond', this.value)" style="width: 100%;">
+                            <option value="==" ${rule.operator_cond === '==' || rule.operator_cond === '=' ? 'selected' : ''}>=</option>
+                            <option value="!=" ${rule.operator_cond === '!=' ? 'selected' : ''}>!=</option>
+                            <option value=">=" ${rule.operator_cond === '>=' ? 'selected' : ''}>&gt;=</option>
+                            <option value="<=" ${rule.operator_cond === '<=' ? 'selected' : ''}>&lt;=</option>
+                            <option value=">" ${rule.operator_cond === '>' ? 'selected' : ''}>&gt;</option>
+                            <option value="<" ${rule.operator_cond === '<' ? 'selected' : ''}>&lt;</option>
                         </select>
                     </td>
                     <td>
                         <input type="text" value="${rule.value_cond || ''}" 
                             onchange="updateVisualRule('${rule.id}', 'value_cond', this.value)" 
-                            style="width: 80px;">
+                            placeholder="Değer..." style="width: 100%;">
                     </td>
-                    <td>
-                        <input type="color" value="${rule.color || '#ffffff'}" 
-                            onchange="updateVisualRule('${rule.id}', 'color', this.value)">
+                    <td style="text-align: center;">
+                        <input type="color" value="${rule.color || '#3b82f6'}" 
+                            onchange="updateVisualRule('${rule.id}', 'color', this.value)"
+                            style="width: 32px; height: 32px; padding: 0; border: none; cursor: pointer; background: transparent;">
                     </td>
-                    <td>
-                        <button class="btn btn-icon" onclick="removeVisualRule('${rule.id}')" title="Sil">
+                    <td style="text-align: center;">
+                        <button class="btn btn-icon" onclick="removeVisualRule('${rule.id}')" title="Kuralı Sil">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -216,7 +132,7 @@ class StatusRulesManager {
     }
 
     addVisualRule() {
-        const id = crypto.randomUUID();
+        const id = 'new-' + Date.now();
         this.visualRules.push({
             id,
             status_cond: '',
@@ -233,32 +149,7 @@ class StatusRulesManager {
         this.renderVisualRules();
     }
 
-    async save() {
-        // ... (existing save logic for matrix)
-        const btn = document.getElementById('btn-save-status-rules');
-        const originalHtml = btn.innerHTML;
 
-        try {
-            btn.disabled = true;
-            btn.innerHTML = 'Kaydediliyor...';
-
-            const records = Object.entries(this.rules).map(([status, rules]) => ({
-                status,
-                rules
-            }));
-
-            await crmDB.supabase.upsert('status_rules', records, 'status');
-
-            showToast('Durum kuralları başarıyla kaydedildi.', 'success');
-            window.statusRules = this.rules;
-        } catch (error) {
-            console.error('Save status rules error:', error);
-            showToast('Kaydedilemedi: ' + error.message, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    }
 
     async saveVisualRules() {
         const btn = document.getElementById('btn-save-visual-rules');
@@ -266,22 +157,10 @@ class StatusRulesManager {
 
         try {
             btn.disabled = true;
-            btn.innerHTML = 'Kaydediliyor...';
+            btn.innerHTML = '<span class="spin-animation">↻</span> Kaydediliyor...';
 
-            // Filter out default temp ids if needed, or just upsert
-            // Map to records without created_at if updating
-            const records = this.visualRules.map(r => {
-                const rec = { ...r };
-                if (String(rec.id).startsWith('default')) delete rec.id;
-                return rec;
-            });
-
-            // For simplicity, delete all and re-insert or use upsert with proper IDs
-            // Let's use a simple approach: if id is a uuid, it works.
-            
-            // Prepare records (Supabase will handle upsert via id)
             const payload = this.visualRules.map(r => ({
-                id: String(r.id).startsWith('default') ? crypto.randomUUID() : r.id,
+                id: (String(r.id).startsWith('new-') || String(r.id).startsWith('default')) ? crypto.randomUUID() : r.id,
                 status_cond: r.status_cond || null,
                 field_cond: r.field_cond,
                 operator_cond: r.operator_cond,
@@ -289,15 +168,21 @@ class StatusRulesManager {
                 color: r.color
             }));
 
-            // To avoid orphaned rules in DB, we could delete non-existent IDs.
-            // For now, let's just clear and insert to be safe and simple.
-            await crmDB.supabase.delete('visual_rules', 'id=neq.00000000-0000-0000-0000-000000000000'); // Delete all
+            // Step 1: Wipe current rules safely
+            await crmDB.supabase.delete('visual_rules', 'id=neq.00000000-0000-0000-0000-000000000000'); 
+            
+            // Step 2: Insert new rules if any exist
             if (payload.length > 0) {
                 await crmDB.supabase.insert('visual_rules', payload);
             }
 
+            // Step 3: Refresh local list from DB to get the actual UUIDs
+            const freshRows = await crmDB.supabase.select('visual_rules', 'order=created_at.asc');
+            this.visualRules = freshRows || [];
+            window.visualRules = [...this.visualRules];
+            
+            this.renderVisualRules();
             showToast('Görsel kurallar başarıyla kaydedildi.', 'success');
-            window.visualRules = this.visualRules;
         } catch (error) {
             console.error('Save visual rules error:', error);
             showToast('Kaydedilemedi: ' + error.message, 'error');
@@ -309,19 +194,7 @@ class StatusRulesManager {
 }
 
 // Global hooks
-function updateStatusRule(status, field, prop, value) {
-    if (window.statusRulesManager) {
-        if (!window.statusRulesManager.rules[status]) window.statusRulesManager.rules[status] = {};
-        if (!window.statusRulesManager.rules[status][field]) window.statusRulesManager.rules[status][field] = {};
-        window.statusRulesManager.rules[status][field][prop] = value;
-    }
-}
 
-async function saveAllStatusRules() {
-    if (window.statusRulesManager) {
-        await window.statusRulesManager.save();
-    }
-}
 
 function addVisualRule() {
     if (window.statusRulesManager) window.statusRulesManager.addVisualRule();

@@ -83,6 +83,13 @@
                 </svg>
                 <span>School</span>
             </a>
+            <a href="#" class="nav-item" data-page="dash-bonus" id="nav-dash-bonus">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1v22m11-18H1M1 21h22" />
+                    <circle cx="12" cy="12" r="7" />
+                </svg>
+                <span>Genel Prim Takip</span>
+            </a>
         </nav>
 
         <div class="sidebar-category">DOSYA İŞLEMLERİ</div>
@@ -303,15 +310,15 @@
                 <div class="filter-row filter-row-secondary">
                     <div class="filter-date-group">
                         <label>Record Date</label>
-                        <input type="date" id="filter-record-date-from" placeholder="Başlangıç" onclick="this.showPicker()">
+                        <input type="date" id="filter-record-date-from" placeholder="Başlangıç">
                         <span class="date-separator">–</span>
-                        <input type="date" id="filter-record-date-to" placeholder="Bitiş" onclick="this.showPicker()">
+                        <input type="date" id="filter-record-date-to" placeholder="Bitiş">
                     </div>
                     <div class="filter-date-group">
                         <label>Program Start</label>
-                        <input type="date" id="filter-program-date-from" placeholder="Başlangıç" onclick="this.showPicker()">
+                        <input type="date" id="filter-program-date-from" placeholder="Başlangıç">
                         <span class="date-separator">–</span>
-                        <input type="date" id="filter-program-date-to" placeholder="Bitiş" onclick="this.showPicker()">
+                        <input type="date" id="filter-program-date-to" placeholder="Bitiş">
                     </div>
                     <label class="filter-checkbox toggle-extra-cols">
                         <input type="checkbox" id="toggle-detailed-view">
@@ -345,8 +352,8 @@
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
                     </select>
-                    <button class="btn btn-primary btn-sm" id="btn-bulk-apply">Uygula</button>
-                    <button class="btn btn-ghost btn-sm" id="btn-bulk-cancel">İptal</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-bulk-apply" onclick="if(window.trackingManager) trackingManager.bulkUpdateStatus()">Uygula</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="btn-bulk-cancel" onclick="if(window.trackingManager) trackingManager.clearSelection()">İptal</button>
                 </div>
             </div>
 
@@ -363,6 +370,7 @@
                             <th class="th-status" data-sort="status">Durum</th>
                             <th class="th-date" data-sort="Program Start Date">Program Başlangıç</th>
                             <th class="th-number td-total-comm" data-sort="total_commission">Net Komisyon</th>
+                            <th class="th-number td-usd-comm" data-sort="usd_commission">USD Net Komisyon</th>
                             <th class="th-currency" data-sort="Currency">Kur</th>
                             <th class="col-extra" data-sort="Duration">Süre</th>
                             <th class="th-number col-extra" data-sort="Total Debt">Toplam Borç</th>
@@ -438,8 +446,16 @@
                     </div>
                     <div class="filter-select-wrapper" id="dash-year-wrapper" style="display:none;">
                         <label>Yıl</label>
-                        <select id="dash-year">
-                        </select>
+                        <div class="status-multiselect" id="year-multiselect">
+                            <button type="button" class="status-multiselect-btn" id="year-multiselect-btn"
+                                onclick="dashboardManager.toggleYearFilter()">
+                                Yıl Seç ▾
+                            </button>
+                            <div class="status-multiselect-dropdown" id="year-multiselect-dropdown"
+                                style="display:none;">
+                                <!-- Checkboxes will be populated by JS -->
+                            </div>
+                        </div>
                     </div>
                     <div class="filter-select-wrapper" id="dash-month-wrapper" style="display:none;">
                         <label>Ay</label>
@@ -463,6 +479,24 @@
                         <select id="dash-employee-filter">
                             <option value="">Tüm Çalışanlar</option>
                         </select>
+                    </div>
+                    <div class="filter-select-wrapper" id="dash-school-wrapper" style="display:none;">
+                        <label>School</label>
+                        <div class="status-multiselect" id="school-multiselect" style="position: relative;">
+                            <button type="button" class="status-multiselect-btn" id="school-multiselect-btn"
+                                onclick="event.stopPropagation(); dashboardManager.toggleSchoolFilter()">
+                                Okul Seç ▾
+                            </button>
+                            <div class="status-multiselect-dropdown" id="school-multiselect-dropdown"
+                                style="display:none; width: 250px; padding: 10px;">
+                                <input type="text" id="school-search-input" placeholder="Okul ara..." 
+                                    style="width: 100%; padding: 6px 10px; margin-bottom: 10px; background: var(--bg-card); border: 1px solid var(--border-primary); color: var(--text-primary); border-radius: 4px; outline: none;"
+                                    onclick="event.stopPropagation()" onkeyup="dashboardManager.filterSchoolSearch(this.value)">
+                                <div id="school-checkbox-list" style="max-height: 220px; overflow-y: auto;">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -552,6 +586,34 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Bonus KPI Cards -->
+            <div class="kpi-grid" id="kpi-bonus-grid" style="display:none;">
+                <div class="kpi-card" id="kpi-bonus-total-rows">
+                    <div class="kpi-icon kpi-icon-blue">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-bonus-total-rows-value">0</span>
+                        <span class="kpi-label">Toplam Kayıt (Aktif)</span>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-bonus-usd-comm">
+                    <div class="kpi-icon kpi-icon-purple">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23" />
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-value" id="kpi-bonus-usd-comm-value">0</span>
+                        <span class="kpi-label">Toplam USD Net Komisyon</span>
+                    </div>
+                </div>
+            </div>
 
             <!-- Status Distribution -->
             <div class="dashboard-section">
@@ -584,6 +646,29 @@
                 <div class="dashboard-section">
                     <h2 class="section-title">Currency Bazında</h2>
                     <div class="pivot-table-container" id="pivot-currency"></div>
+                </div>
+                <div class="dashboard-section dashboard-section-full" id="section-bonus-status" style="display:none;">
+                    <h2 class="section-title">Durum Bazında USD Komisyon Dağılımı</h2>
+                    <div class="pivot-table-container" id="pivot-bonus-status"></div>
+                </div>
+                <div class="dashboard-section dashboard-section-full" id="section-student-list" style="display:none;">
+                    <h2 class="section-title">Filtrelere Uygun Öğrenci Listesi</h2>
+                    <div class="table-container">
+                        <table class="data-table" id="student-list-table">
+                            <thead>
+                                <tr>
+                                    <th class="th-name sortable" data-sort="Name">Ad Soyad</th>
+                                    <th class="th-school sortable" data-sort="School">Okul</th>
+                                    <th class="th-status sortable" data-sort="status">Durumu</th>
+                                    <th class="th-number sortable" data-sort="net_comm">Net Komisyon</th>
+                                    <th class="th-currency sortable" data-sort="Currency">Kur</th>
+                                    <th class="th-number sortable" data-sort="usd_comm">USD Net Komisyon</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-list-body">
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -728,9 +813,8 @@
         <section class="page" id="page-status-rules" style="display:none;">
             <div class="page-header">
                 <h1>Durum Kuralları Ayarları</h1>
-                <p class="page-subtitle">Her durum tipi için görsel ve mantıksal kuralları belirleyin.</p>
+                <p class="page-subtitle">Belirli koşullara uyan satırları renklendirin.</p>
             </div>
-
 
 
                 <!-- Visual Rules Card -->
@@ -738,7 +822,7 @@
                     <div class="system-card-header">
                         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                             <div>
-                                <h2>Kural Matrisi</h2>
+                                <h2>Görsel Kurallar</h2>
                                 <p>Belirli koşullara uyan satırları renklendirin.</p>
                             </div>
                             <button class="btn btn-outline btn-sm" id="btn-add-visual-rule"
@@ -764,6 +848,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </section>
     </main>
@@ -820,12 +905,14 @@
         </div>
     </div>
 
-    <script src="js/db.js?v=21"></script>
-    <script src="js/tracking.js?v=26"></script>
+    <script src="js/csv-parser.js?v=31"></script>
+    <script src="js/db.js?v=31"></script>
+    <script src="js/upload.js?v=31"></script>
+    <script src="js/tracking.js?v=31"></script>
     <script src="js/system.js?v=34"></script>
-    <script src="js/dashboard.js?v=21"></script>
-    <script src="js/status-rules.js?v=21"></script>
-    <script src="js/app.js?v=21"></script>
+    <script src="js/dashboard.js?v=31"></script>
+    <script src="js/status-rules.js?v=31"></script>
+    <script src="js/app.js?v=31"></script>
 </body>
 
 </html>

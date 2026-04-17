@@ -9,11 +9,20 @@ class DashboardManager {
         this.activeData = [];
         this.missingCount = 0;
         this.filtersInitialized = false;
+        this.currencyHistory = {}; // monthYear -> { code -> rate }
+        this.studentSort = { field: 'Name', asc: true };
     }
 
     async render(type = 'dash-general') {
         this.currentView = type;
-        this.allData = await crmDB.getJoinedData();
+        
+        // Fetch data and currency history
+        const [joinedData, _] = await Promise.all([
+            crmDB.getJoinedData(),
+            this.loadCurrencyHistory()
+        ]);
+        
+        this.allData = joinedData;
         this.activeData = this.allData.filter(r => !r.is_missing_in_latest_upload);
         this.missingCount = this.allData.filter(r => r.is_missing_in_latest_upload).length;
 
@@ -35,19 +44,27 @@ class DashboardManager {
 
     initFilters() {
         const timeFilter = document.getElementById('dash-time-filter');
-        const yearSelect = document.getElementById('dash-year');
         const monthSelect = document.getElementById('dash-month');
         const yearWrapper = document.getElementById('dash-year-wrapper');
         const monthWrapper = document.getElementById('dash-month-wrapper');
 
         // Populate year dropdown from data
         const years = this.getAvailableYears();
-        yearSelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
-        // Default to current year
+        const yearDropdown = document.getElementById('year-multiselect-dropdown');
         const currentYear = new Date().getFullYear();
-        if (years.includes(currentYear)) {
-            yearSelect.value = currentYear;
+
+        if (yearDropdown) {
+            yearDropdown.innerHTML = years.map(y => `
+                <label class="status-checkbox-item">
+                    <input type="checkbox" value="${y}" ${y === currentYear ? 'checked' : ''} onchange="dashboardManager.applyYearFilter()">
+                    ${y}
+                </label>
+            `).join('');
+            
+            // Initial button text
+            this.updateYearButtonText();
         }
+
         // Default month to current month
         const currentMonth = new Date().getMonth() + 1;
         monthSelect.value = currentMonth;
@@ -68,12 +85,31 @@ class DashboardManager {
             this.applyFiltersAndRender();
         });
 
-        yearSelect.addEventListener('change', () => this.applyFiltersAndRender());
         monthSelect.addEventListener('change', () => this.applyFiltersAndRender());
 
         if (empSelect) {
             empSelect.addEventListener('change', () => this.applyFiltersAndRender());
         }
+
+        // Outside click listener for year and school multiselects
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#year-multiselect')) {
+                const dropdown = document.getElementById('year-multiselect-dropdown');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+            if (!e.target.closest('#school-multiselect')) {
+                const sDropdown = document.getElementById('school-multiselect-dropdown');
+                if (sDropdown) sDropdown.style.display = 'none';
+            }
+        });
+
+        // Student List Sort Events
+        document.querySelectorAll('#student-list-table th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const field = th.getAttribute('data-sort');
+                this.sortStudentList(field);
+            });
+        });
     }
 
     getAvailableYears() {
@@ -86,6 +122,120 @@ class DashboardManager {
             }
         });
         return [...years].sort((a, b) => b - a);
+    }
+
+    // ========== YEAR MULTISELECT METHODS ==========
+
+    toggleYearFilter() {
+        const dropdown = document.getElementById('year-multiselect-dropdown');
+        if (dropdown) {
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        }
+    }
+
+    getSelectedYears() {
+        const checkboxes = document.querySelectorAll('#year-multiselect-dropdown input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => parseInt(cb.value));
+    }
+
+    applyYearFilter() {
+        this.updateYearButtonText();
+        this.applyFiltersAndRender();
+    }
+
+    updateYearButtonText() {
+        const selected = this.getSelectedYears();
+        const btn = document.getElementById('year-multiselect-btn');
+        if (!btn) return;
+
+        if (selected.length === 0) {
+            btn.textContent = 'Yıl Seç ▾';
+        } else if (selected.length === 1) {
+            btn.textContent = selected[0] + ' ▾';
+        } else {
+            btn.textContent = selected.length + ' Yıl ▾';
+        }
+        
+        // Update filter-active class
+        if (selected.length > 0) {
+            btn.classList.add('filter-active');
+        } else {
+            btn.classList.remove('filter-active');
+        }
+    }
+
+    // ========== SCHOOL MULTISELECT METHODS ==========
+
+    toggleSchoolFilter() {
+        const dropdown = document.getElementById('school-multiselect-dropdown');
+        if (dropdown) {
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            if (dropdown.style.display === 'block') {
+                const searchInput = document.getElementById('school-search-input');
+                if (searchInput) searchInput.focus();
+            }
+        }
+    }
+
+    populateSchoolMultiselect() {
+        const schoolListContainer = document.getElementById('school-checkbox-list');
+        if (!schoolListContainer) return;
+        
+        const schools = [...new Set(this.activeData.map(r => r['School']).filter(Boolean))].sort();
+        
+        schoolListContainer.innerHTML = schools.map(s => `
+            <label class="status-checkbox-item school-option-item">
+                <input type="checkbox" value="${this.escapeHtml(s)}" onchange="dashboardManager.applySchoolFilter()">
+                <span class="school-name-text">${this.escapeHtml(s)}</span>
+            </label>
+        `).join('');
+        
+        this.updateSchoolButtonText();
+    }
+
+    filterSchoolSearch(query) {
+        const q = query.toLowerCase().trim();
+        const items = document.querySelectorAll('.school-option-item');
+        items.forEach(item => {
+            const text = item.querySelector('.school-name-text').textContent.toLowerCase();
+            if (text.includes(q)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    getSelectedSchools() {
+        const checkboxes = document.querySelectorAll('#school-checkbox-list input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    applySchoolFilter() {
+        this.updateSchoolButtonText();
+        this.applyFiltersAndRender();
+    }
+
+    updateSchoolButtonText() {
+        const selected = this.getSelectedSchools();
+        const btn = document.getElementById('school-multiselect-btn');
+        if (!btn) return;
+
+        if (selected.length === 0) {
+            btn.textContent = 'Okul Seç ▾';
+        } else if (selected.length === 1) {
+            let text = selected[0];
+            if (text.length > 15) text = text.substring(0, 15) + '...';
+            btn.textContent = text + ' ▾';
+        } else {
+            btn.textContent = selected.length + ' Okul ▾';
+        }
+        
+        if (selected.length > 0) {
+            btn.classList.add('filter-active');
+        } else {
+            btn.classList.remove('filter-active');
+        }
     }
 
     parseDate(dateStr) {
@@ -106,13 +256,12 @@ class DashboardManager {
     getFilteredData() {
         let data = [...this.activeData];
         const timeFilter = document.getElementById('dash-time-filter');
-        const yearSelect = document.getElementById('dash-year');
         const monthSelect = document.getElementById('dash-month');
         const empSelect = document.getElementById('dash-employee-filter');
 
         // Time filter
         if (timeFilter && timeFilter.value !== 'all') {
-            const selectedYear = parseInt(yearSelect.value);
+            const selectedYears = this.getSelectedYears();
             const selectedMonth = parseInt(monthSelect.value);
 
             data = data.filter(row => {
@@ -120,10 +269,13 @@ class DashboardManager {
                 const d = this.parseDate(dateStr);
                 if (!d) return false;
 
+                const year = d.getFullYear();
+                const month = d.getMonth() + 1;
+
                 if (timeFilter.value === 'yearly') {
-                    return d.getFullYear() === selectedYear;
+                    return selectedYears.length === 0 || selectedYears.includes(year);
                 } else if (timeFilter.value === 'monthly') {
-                    return d.getFullYear() === selectedYear && (d.getMonth() + 1) === selectedMonth;
+                    return (selectedYears.length === 0 || selectedYears.includes(year)) && month === selectedMonth;
                 }
                 return true;
             });
@@ -132,6 +284,12 @@ class DashboardManager {
         // Employee filter
         if (empSelect && empSelect.value) {
             data = data.filter(row => row['Employee'] === empSelect.value);
+        }
+
+        // School filter
+        const selectedSchools = this.getSelectedSchools ? this.getSelectedSchools() : [];
+        if (selectedSchools.length > 0) {
+            data = data.filter(row => selectedSchools.includes(row['School']));
         }
 
         return data;
@@ -150,11 +308,13 @@ class DashboardManager {
             this.renderPivotEmployee(filteredData);
             this.renderPivotProgram(filteredData);
             this.renderPivotCurrency(filteredData);
-        } else if (this.currentView === 'dash-counsellor') {
-            this.renderPivotCounsellor(filteredData);
         } else if (this.currentView === 'dash-school') {
             this.renderPivotSchoolDetailed(filteredData);
             this.renderPivotSchool(filteredData); 
+        } else if (this.currentView === 'dash-bonus') {
+            this.renderBonusKPIs(filteredData);
+            this.renderBonusByStatus(filteredData);
+            this.renderStudentList(filteredData);
         }
     }
 
@@ -163,12 +323,19 @@ class DashboardManager {
         const isGeneral = this.currentView === 'dash-general';
         const isCounsellor = this.currentView === 'dash-counsellor';
         const isSchool = this.currentView === 'dash-school';
+        const isBonus = this.currentView === 'dash-bonus';
 
         const show = (id, visible) => {
             const el = document.getElementById(id);
             if (el) el.closest('.dashboard-section')?.style.setProperty('display', visible ? '' : 'none', 'important');
             if (el && !el.closest('.dashboard-section')) el.style.display = visible ? '' : 'none';
         };
+
+        // School filter wrapper visibility - only on dash-school
+        const schoolWrapper = document.getElementById('dash-school-wrapper');
+        if (schoolWrapper) {
+            schoolWrapper.style.display = isSchool ? '' : 'none';
+        }
 
         // KPI grid is only for general
         const kpiGrid = document.getElementById('kpi-grid');
@@ -181,8 +348,213 @@ class DashboardManager {
         
         show('pivot-counsellor', isCounsellor);
         
+        
         show('pivot-school-detailed', isSchool);
         show('pivot-school', isSchool);
+
+        // Bonus view
+        const bonusGrid = document.getElementById('kpi-bonus-grid');
+        if (bonusGrid) bonusGrid.style.display = isBonus ? 'grid' : 'none';
+        
+        // Use a container for the status section so we can hide the whole thing
+        const bonusStatusSec = document.getElementById('section-bonus-status');
+        if (bonusStatusSec) bonusStatusSec.style.display = isBonus ? '' : 'none';
+
+        const studentListSec = document.getElementById('section-student-list');
+        if (studentListSec) studentListSec.style.display = isBonus ? '' : 'none';
+    }
+
+    async loadCurrencyHistory() {
+        try {
+            const results = await crmDB.supabase.select('currencies', 'limit=10000');
+            this.currencyHistory = {};
+            (results || []).forEach(row => {
+                if (!this.currencyHistory[row.month_year]) {
+                    this.currencyHistory[row.month_year] = {};
+                }
+                this.currencyHistory[row.month_year][row.code] = parseFloat(row.rate) || 1;
+            });
+        } catch (e) {
+            console.error('Failed to load currency history in dashboard:', e);
+        }
+    }
+
+    getTurkishMonthYear(dateStr) {
+        if (!dateStr) return null;
+        const date = this.parseDate(dateStr);
+        if (!date) return null;
+
+        const months = [
+            'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+            'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+        ];
+        return `${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    calculateUsdComm(row) {
+        const getVal = (field) => {
+            const v = row[field];
+            if (v === null || v === undefined || v === '') return 0;
+            return typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 : v;
+        };
+
+        const csvCalc = getVal('Comm') + getVal('Cancellation') - getVal('Discount') - getVal('Represantative Comm');
+        const manualComm = (row._tracking && row._tracking.manual_net_commission) ? parseFloat(row._tracking.manual_net_commission) : 0;
+        const totalComm = (csvCalc !== 0) ? csvCalc : manualComm;
+
+        const dateStr = row['Record Date'];
+        const monthYear = this.getTurkishMonthYear(dateStr);
+        const currency = row['Currency'];
+
+        // Try exact match first
+        let rate = (this.currencyHistory[monthYear] && this.currencyHistory[monthYear][currency]) || null;
+        
+        // Fallback: latest available for this currency
+        if (!rate) {
+            const allMonths = Object.keys(this.currencyHistory).sort((a, b) => b.localeCompare(a));
+            for (const m of allMonths) {
+                if (this.currencyHistory[m][currency]) {
+                    rate = this.currencyHistory[m][currency];
+                    break;
+                }
+            }
+        }
+
+        if (row._tracking && row._tracking.status === 'Cancelled') {
+            return 0;
+        }
+
+        return (rate && totalComm) ? (totalComm / rate) : 0;
+    }
+
+    renderBonusKPIs(data) {
+        const totalRows = data.length;
+        let totalUsdComm = 0;
+        data.forEach(row => {
+            totalUsdComm += this.calculateUsdComm(row);
+        });
+
+        this.animateValue('kpi-bonus-total-rows-value', totalRows, false);
+        this.animateValue('kpi-bonus-usd-comm-value', totalUsdComm, true);
+    }
+
+    renderBonusByStatus(data) {
+        const statusGroups = {};
+        STATUSES.forEach(s => statusGroups[s] = { count: 0, usdComm: 0 });
+
+        data.forEach(row => {
+            const status = row._tracking.status || 'Process';
+            if (!statusGroups[status]) statusGroups[status] = { count: 0, usdComm: 0 };
+            
+            statusGroups[status].count++;
+            statusGroups[status].usdComm += this.calculateUsdComm(row);
+        });
+
+        const rows = Object.entries(statusGroups)
+            .filter(([_, stats]) => stats.count > 0 || stats.usdComm > 0)
+            .map(([status, stats]) => [
+                status,
+                stats.count,
+                formatNumber(stats.usdComm)
+            ]).sort((a, b) => b[1] - a[1]);
+
+        const totalUsd = Object.values(statusGroups).reduce((s, st) => s + st.usdComm, 0);
+        const totalCount = Object.values(statusGroups).reduce((s, st) => s + st.count, 0);
+
+        document.getElementById('pivot-bonus-status').innerHTML = this.buildPivotTable(
+            ['Durum', 'Kayıt Sayısı', 'Toplam USD Net Komisyon'],
+            rows,
+            ['Toplam', totalCount, formatNumber(totalUsd)],
+            [false, false, true]
+        );
+    }
+
+    renderStudentList(data) {
+        const container = document.getElementById('student-list-body');
+        if (!container) return;
+
+        if (data.length === 0) {
+            container.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">Filtrelere uygun kayıt bulunamadı.</td></tr>';
+            return;
+        }
+
+        // Process data for rendering (calculate net_comm and usd_comm)
+        const processed = data.map(row => {
+            const getVal = (field) => {
+                const v = row[field];
+                if (v === null || v === undefined || v === '') return 0;
+                return typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 : v;
+            };
+
+            const csvCalc = getVal('Comm') + getVal('Cancellation') - getVal('Discount') - getVal('Represantative Comm');
+            const manualComm = (row._tracking && row._tracking.manual_net_commission) ? parseFloat(row._tracking.manual_net_commission) : 0;
+            const netComm = (csvCalc !== 0) ? csvCalc : manualComm;
+            const usdComm = this.calculateUsdComm(row);
+
+            return {
+                ...row,
+                _netComm: netComm,
+                _usdComm: usdComm,
+                _displayName: `${row['Name'] || ''} ${row['Surname'] || ''}`.trim(),
+                _status: row._tracking.status || 'Process'
+            };
+        });
+
+        // Sort data
+        const { field, asc } = this.studentSort;
+        processed.sort((a, b) => {
+            let valA, valB;
+            if (field === 'Name') {
+                valA = a._displayName.toLowerCase();
+                valB = b._displayName.toLowerCase();
+            } else if (field === 'status') {
+                valA = a._status.toLowerCase();
+                valB = b._status.toLowerCase();
+            } else if (field === 'net_comm') {
+                valA = a._netComm;
+                valB = b._netComm;
+            } else if (field === 'usd_comm') {
+                valA = a._usdComm;
+                valB = b._usdComm;
+            } else {
+                valA = (a[field] || '').toString().toLowerCase();
+                valB = (b[field] || '').toString().toLowerCase();
+            }
+
+            if (valA < valB) return asc ? -1 : 1;
+            if (valA > valB) return asc ? 1 : -1;
+            return 0;
+        });
+
+        // Update Sort Indicators
+        document.querySelectorAll('#student-list-table th.sortable').forEach(th => {
+            th.classList.remove('sorted-asc', 'sorted-desc');
+            if (th.getAttribute('data-sort') === field) {
+                th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+            }
+        });
+
+        // Render
+        container.innerHTML = processed.map(r => `
+            <tr>
+                <td class="td-name">${this.escapeHtml(r._displayName)}</td>
+                <td class="td-school">${this.escapeHtml(r['School'] || '')}</td>
+                <td class="td-status"><span class="status-badge" data-status="${r._status}">${r._status}</span></td>
+                <td class="td-number">${formatNumber(r._netComm)}</td>
+                <td class="td-currency">${this.escapeHtml(r['Currency'] || '')}</td>
+                <td class="td-number">${formatNumber(r._usdComm)}</td>
+            </tr>
+        `).join('');
+    }
+
+    sortStudentList(field) {
+        if (this.studentSort.field === field) {
+            this.studentSort.asc = !this.studentSort.asc;
+        } else {
+            this.studentSort.field = field;
+            this.studentSort.asc = true;
+        }
+        this.renderStudentList(this.getFilteredData());
     }
 
     showEmpty() {

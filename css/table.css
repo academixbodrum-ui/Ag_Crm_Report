@@ -215,6 +215,13 @@
     font-weight: 700;
 }
 
+.data-table td.td-usd-comm {
+    width: 100px;
+    min-width: 100px;
+    font-weight: 700;
+    color: var(--accent-blue-light);
+}
+
 /* Extra and Bonus Columns */
 .col-extra {
     width: 100px;
@@ -259,19 +266,86 @@
     background: var(--bg-card-hover);
 }
 
-.data-table tbody tr.row-missing td {
-    color: var(--text-tertiary);
-    background: rgba(0, 0, 0, 0.05);
+/* ==========================================
+   STATUS-BASED ROW HIGHLIGHTING (Premium Palette)
+   ========================================== */
+
+/* 1. Cancelled: Siyah üzerine Gri ve silik */
+.data-table tbody tr[data-row-status="Cancelled"] {
+    background-color: #000000 !important;
+}
+.data-table tbody tr[data-row-status="Cancelled"] td {
+    color: #888888 !important;
+    opacity: 0.5;
+}
+.data-table tbody tr[data-row-status="Cancelled"] td.td-name {
+    background-color: #000000 !important;
 }
 
-.data-table tbody tr.row-missing td.td-id {
-    padding-left: 30px;
-    font-size: 0.75rem;
+/* 2. Process: Varsayılan (Renk yok) */
+.data-table tbody tr[data-row-status="Process"] {
+    background-color: transparent !important;
 }
 
-.data-table tbody tr.row-missing td.td-name {
-    font-style: italic;
-    font-weight: 400;
+/* 3. Visa: Açık Turuncu / Amber */
+.data-table tbody tr[data-row-status="Visa"] {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+}
+.data-table tbody tr[data-row-status="Visa"] td.td-name {
+    background-color: color-mix(in srgb, #f59e0b 22%, #1a2236) !important;
+}
+
+/* --- Mavi Ton Sıralaması --- */
+
+/* 4. Commission: Soft Turkuaz Mavi (Daha Net) */
+.data-table tbody tr[data-row-status="Commission"] {
+    background-color: rgba(6, 182, 212, 0.20) !important;
+}
+.data-table tbody tr[data-row-status="Commission"] td.td-name {
+    background-color: color-mix(in srgb, #06b6d4 25%, #1a2236) !important;
+}
+
+/* 5. Commission (Taksim): Gökyüzü Mavisi (Daha Net) */
+.data-table tbody tr[data-row-status="Commission (Taksim)"] {
+    background-color: rgba(14, 165, 233, 0.25) !important;
+}
+.data-table tbody tr[data-row-status="Commission (Taksim)"] td.td-name {
+    background-color: color-mix(in srgb, #0ea5e9 30%, #1a2236) !important;
+}
+
+/* 6. Completed: Saf Gece Mavisi */
+.data-table tbody tr[data-row-status="Completed"] {
+    background-color: rgba(59, 130, 246, 0.20) !important;
+}
+.data-table tbody tr[data-row-status="Completed"] td.td-name {
+    background-color: color-mix(in srgb, #3b82f6 25%, #1a2236) !important;
+}
+
+/* --- Eflatun - Mor Ton Sıralaması --- */
+
+/* 7. Awaiting Payment: Fuşya Eflatun */
+.data-table tbody tr[data-row-status="Awaiting Payment"] {
+    background-color: rgba(236, 72, 153, 0.15) !important;
+}
+.data-table tbody tr[data-row-status="Awaiting Payment"] td.td-name {
+    background-color: color-mix(in srgb, #ec4899 20%, #1a2236) !important;
+}
+
+/* 8. School Payment: Kraliyet Moru */
+.data-table tbody tr[data-row-status="School Payment"] {
+    background-color: rgba(168, 85, 247, 0.18) !important;
+}
+.data-table tbody tr[data-row-status="School Payment"] td.td-name {
+    background-color: color-mix(in srgb, #a855f7 22%, #1a2236) !important;
+}
+
+/* Hover Efekti (Tüm Durumlar İçin) */
+.data-table tbody tr:hover td {
+    filter: brightness(1.1);
+}
+.data-table tbody tr:hover td.td-name {
+    background-color: var(--bg-card-hover) !important;
+    filter: brightness(1.2);
 }
 
 /* History/Previous Values Row */

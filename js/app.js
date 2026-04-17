@@ -39,6 +39,7 @@ function navigateTo(page) {
             if (page === 'dash-general') pageTitle.textContent = 'Genel İstatistikler';
             else if (page === 'dash-counsellor') pageTitle.textContent = 'Counsellor İstatistikleri';
             else if (page === 'dash-school') pageTitle.textContent = 'School İstatistikleri';
+            else if (page === 'dash-bonus') pageTitle.textContent = 'Genel Prim Takip';
         }
         
         // Show dashboard page for all dash-* views
@@ -68,7 +69,7 @@ function navigateTo(page) {
             console.error('systemManager not initialized');
         }
     } else if (page === 'status-rules') {
-        if (window.statusRulesManager) {
+        if (statusRulesManager) {
             statusRulesManager.loadData();
         }
     }
@@ -204,23 +205,19 @@ async function initApp() {
         trackingManager = new TrackingManager();
         dashboardManager = new DashboardManager();
         window.systemManager = new SystemManager(); 
-        window.statusRulesManager = new StatusRulesManager(); // Initialize rules manager
+        statusRulesManager = new StatusRulesManager(); 
+        window.statusRulesManager = statusRulesManager;
         
         // Initial load of classifications for filters
         try {
-            const [classifications, rules, visualRules] = await Promise.all([
+            const [classifications, visualRules] = await Promise.all([
                 crmDB.supabase.select('program_types'),
-                crmDB.supabase.select('status_rules'),
                 crmDB.supabase.select('visual_rules')
             ]);
             
             const map = {};
             (classifications || []).forEach(c => map[c.program_name] = c.program_type);
             window.programTypeMap = map;
-
-            const ruleMap = {};
-            (rules || []).forEach(r => ruleMap[r.status] = r.rules);
-            window.statusRules = ruleMap;
 
             window.visualRules = visualRules || [];
         } catch (e) {
