@@ -12,7 +12,10 @@ class StatusRulesManager {
         this.fields = [
             ...CSV_COLUMNS,
             'deposit_bonus',
+            'deposit_bonus_status',
             'consultant_bonus',
+            'consultant_bonus_status',
+            'remaining_bonus',
             'notes',
             'next_follow_up_date',
             'owner'
@@ -74,7 +77,6 @@ class StatusRulesManager {
                         <th style="width: 200px;">Alan</th>
                         <th style="width: 120px;">Koşul</th>
                         <th>Değer</th>
-                        <th style="width: 80px; text-align: center;">Renk</th>
                         <th style="width: 60px;"></th>
                     </tr>
                 </thead>
@@ -86,7 +88,7 @@ class StatusRulesManager {
                 <tr>
                     <td>
                         <select onchange="updateVisualRule('${rule.id}', 'status_cond', this.value)" style="width: 100%;">
-                            <option value="">Hero (Herhangi)</option>
+                            <option value="">Hepsi (Herhangi)</option>
                             ${STATUSES.map(s => `<option value="${s}" ${rule.status_cond === s ? 'selected' : ''}>${s}</option>`).join('')}
                         </select>
                     </td>
@@ -109,11 +111,6 @@ class StatusRulesManager {
                         <input type="text" value="${rule.value_cond || ''}" 
                             onchange="updateVisualRule('${rule.id}', 'value_cond', this.value)" 
                             placeholder="Değer..." style="width: 100%;">
-                    </td>
-                    <td style="text-align: center;">
-                        <input type="color" value="${rule.color || '#3b82f6'}" 
-                            onchange="updateVisualRule('${rule.id}', 'color', this.value)"
-                            style="width: 32px; height: 32px; padding: 0; border: none; cursor: pointer; background: transparent;">
                     </td>
                     <td style="text-align: center;">
                         <button class="btn btn-icon" onclick="removeVisualRule('${rule.id}')" title="Kuralı Sil">
@@ -139,7 +136,7 @@ class StatusRulesManager {
             field_cond: 'total_commission',
             operator_cond: '==',
             value_cond: '0',
-            color: '#ef4444'
+            color: '#ff0000' // Constant Red for Warnings
         });
         this.renderVisualRules();
     }

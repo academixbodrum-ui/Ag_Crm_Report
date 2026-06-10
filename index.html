@@ -12,9 +12,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/components.css?v=25">
+    <link rel="stylesheet" href="css/components.css?v=30">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/table.css?v=26">
+    <link rel="stylesheet" href="css/table.css?v=32">
     <link rel="stylesheet" href="css/modal.css">
 </head>
 
@@ -250,11 +250,11 @@
                     </div>
                     <div class="filter-group">
                         <div class="filter-select-wrapper">
-                            <label>Status</label>
+                            <label>Ödeme Durumu</label>
                             <div class="status-multiselect" id="status-multiselect">
                                 <button type="button" class="status-multiselect-btn" id="status-multiselect-btn"
                                     onclick="toggleStatusFilter()">
-                                    Durum Seç ▾
+                                    Ödeme Durumu Seç ▾
                                 </button>
                                 <div class="status-multiselect-dropdown" id="status-multiselect-dropdown"
                                     style="display:none;">
@@ -263,8 +263,6 @@
                                     </label>
                                     <label class="status-checkbox-item"><input type="checkbox" value="Process"
                                             onchange="applyStatusFilter()"> Process</label>
-                                    <label class="status-checkbox-item"><input type="checkbox" value="Visa"
-                                            onchange="applyStatusFilter()"> Visa</label>
                                     <label class="status-checkbox-item"><input type="checkbox" value="Awaiting Payment"
                                             onchange="applyStatusFilter()"> Awaiting Payment</label>
                                     <label class="status-checkbox-item"><input type="checkbox" value="School Payment"
@@ -331,9 +329,13 @@
                         <input type="checkbox" id="toggle-bonus-view">
                         <span>Danışman Prim</span>
                     </label>
-                    <label class="filter-checkbox toggle-archive-cols">
+                    <label class="filter-checkbox toggle-archive-cols" style="margin-right: 12px;">
                         <input type="checkbox" id="toggle-archive-view" checked>
                         <span>Arşivi Gizle</span>
+                    </label>
+                    <label class="filter-checkbox toggle-warning-cols" style="color: var(--accent-red); font-weight: bold;">
+                        <input type="checkbox" id="toggle-warning-filter">
+                        <span>Uyarı !</span>
                     </label>
                     <button class="btn btn-outline btn-sm" id="btn-clear-filters" style="margin-left: auto;">Filtreleri Temizle</button>
             </div>
@@ -345,9 +347,8 @@
                 </div>
                 <div class="bulk-controls">
                     <select id="bulk-status-select" class="bulk-select">
-                        <option value="">Durum Değiştir...</option>
+                        <option value="">Ödeme Durumu Değiştir...</option>
                         <option value="Process">Process</option>
-                        <option value="Visa">Visa</option>
                         <option value="Awaiting Payment">Awaiting Payment</option>
                         <option value="School Payment">School Payment</option>
                         <option value="Commission">Commission</option>
@@ -370,7 +371,8 @@
                             <th class="th-name" data-sort="Name">Ad Soyad</th>
                             <th class="th-school" data-sort="School">Okul</th>
                             <th class="th-date" data-sort="Record Date">Kayıt Tarihi</th>
-                            <th class="th-status" data-sort="status">Durum</th>
+                            <th class="th-status" data-sort="application_status">Vize Durumu</th>
+                            <th class="th-status" data-sort="status">Ödeme Durumu</th>
                             <th class="th-date" data-sort="Program Start Date">Program Başlangıç</th>
                             <th class="th-number td-total-comm" data-sort="total_commission">Net Komisyon</th>
                             <th class="th-number td-usd-comm" data-sort="usd_commission">USD Net Komisyon</th>
@@ -388,9 +390,9 @@
                             <th class="th-number col-extra" data-sort="Represantative Comm">Represantative Comm</th>
                             <th class="th-number" data-sort="School Balance">Okula Borç</th>
                             <th class="th-number col-bonus col-bonus-separator" data-sort="deposit_bonus">Depozito Primi</th>
-                            <th class="col-bonus">Depozito Primi Durumu</th>
+                            <th class="col-bonus" data-sort="deposit_bonus_status">Depozito Primi Durumu</th>
                             <th class="th-number col-bonus" data-sort="consultant_bonus">Danışman Primi</th>
-                            <th class="col-bonus">Danışman Primi Durumu</th>
+                            <th class="col-bonus" data-sort="consultant_bonus_status">Danışman Primi Durumu</th>
                             <th class="th-number col-bonus" data-sort="remaining_bonus">Kalan Prim</th>
                             <th class="th-notes">Notlar</th>
                         </tr>
@@ -641,10 +643,6 @@
                 <div class="dashboard-section">
                     <h2 class="section-title">Program Bazında</h2>
                     <div class="pivot-table-container" id="pivot-program"></div>
-                </div>
-                <div class="dashboard-section">
-                    <h2 class="section-title">School / School Center Bazında</h2>
-                    <div class="pivot-table-container" id="pivot-school"></div>
                 </div>
                 <div class="dashboard-section">
                     <h2 class="section-title">Currency Bazında</h2>
@@ -908,12 +906,12 @@
         </div>
     </div>
 
-    <script src="js/csv-parser.js?v=31"></script>
-    <script src="js/db.js?v=31"></script>
+    <script src="js/csv-parser.js?v=32"></script>
+    <script src="js/db.js?v=33"></script>
     <script src="js/upload.js?v=31"></script>
-    <script src="js/tracking.js?v=31"></script>
+    <script src="js/tracking.js?v=42"></script>
     <script src="js/system.js?v=34"></script>
-    <script src="js/dashboard.js?v=31"></script>
+    <script src="js/dashboard.js?v=33"></script>
     <script src="js/status-rules.js?v=31"></script>
     <script src="js/app.js?v=31"></script>
 </body>

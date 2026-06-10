@@ -30,6 +30,16 @@ class SupabaseClient {
         if (!res.ok) {
             const errBody = await res.text();
             console.error('Supabase error:', res.status, errBody);
+            try {
+                const err = JSON.parse(errBody);
+                if (err.code === '42703' && /crm_tracking\.(manual_net_commission|deposit_bonus|deposit_bonus_status|consultant_bonus|consultant_bonus_status|remaining_bonus)/.test(err.message || '')) {
+                    throw new Error('Supabase crm_tracking tablosunda prim kolonları eksik. supabase_bonus_columns_fix.sql dosyasındaki migration çalıştırılmalı.');
+                }
+            } catch (parsedError) {
+                if (parsedError instanceof Error && parsedError.message.includes('supabase_bonus_columns_fix.sql')) {
+                    throw parsedError;
+                }
+            }
             throw new Error(`Supabase error ${res.status}: ${errBody}`);
         }
         const text = await res.text();
@@ -139,6 +149,70 @@ const FIELD_MAP_TO_DB = {
 const FIELD_MAP_TO_JS = {};
 for (const [js, db] of Object.entries(FIELD_MAP_TO_DB)) {
     FIELD_MAP_TO_JS[db] = js;
+}
+
+const TRACKING_DEFAULTS = {
+    status: '',
+    application_status: '',
+    status_reason: '',
+    notes: '',
+    next_follow_up_date: null,
+    owner: '',
+    tags: [],
+    manual_net_commission: 0,
+    deposit_bonus: 0,
+    deposit_bonus_status: '',
+    consultant_bonus: 0,
+    consultant_bonus_status: '',
+    remaining_bonus: 0,
+    last_touched_at: null,
+    created_at: null
+};
+
+const APPLICATION_STATUS_TAG_PREFIX = 'application_status:';
+
+function getApplicationStatusFromTags(tags) {
+    if (!Array.isArray(tags)) return '';
+    const tag = tags.find(t => typeof t === 'string' && t.startsWith(APPLICATION_STATUS_TAG_PREFIX));
+    return tag ? tag.slice(APPLICATION_STATUS_TAG_PREFIX.length) : '';
+}
+
+function setApplicationStatusTag(tags, applicationStatus) {
+    const cleanTags = Array.isArray(tags)
+        ? tags.filter(t => !(typeof t === 'string' && t.startsWith(APPLICATION_STATUS_TAG_PREFIX)))
+        : [];
+
+    if (applicationStatus) {
+        cleanTags.push(`${APPLICATION_STATUS_TAG_PREFIX}${applicationStatus}`);
+    }
+
+    return cleanTags;
+}
+
+function normalizeNumber(value) {
+    if (value === '' || value === null || value === undefined) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const text = String(value).trim();
+    const normalized = text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text;
+    const parsed = parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeTrackingRow(tracking) {
+    const normalized = { ...TRACKING_DEFAULTS, ...(tracking || {}) };
+    ['manual_net_commission', 'deposit_bonus', 'consultant_bonus', 'remaining_bonus'].forEach(field => {
+        normalized[field] = normalizeNumber(normalized[field]);
+    });
+    normalized.tags = Array.isArray(normalized.tags) ? normalized.tags : [];
+    normalized.application_status = normalized.application_status || getApplicationStatusFromTags(normalized.tags);
+    return normalized;
+}
+
+function toDbTrackingRow(tracking) {
+    const dbTracking = normalizeTrackingRow(tracking);
+    dbTracking.tags = setApplicationStatusTag(dbTracking.tags, dbTracking.application_status);
+    delete dbTracking.application_status;
+    return dbTracking;
 }
 
 function toDbRow(jsRow) {
@@ -260,7 +334,7 @@ class CrmDatabase {
     async getTracking(row_uid) {
         try {
             const result = await supabase.selectOne('crm_tracking', `row_uid=eq.${encodeURIComponent(row_uid)}`);
-            return result || null;
+            return result ? normalizeTrackingRow(result) : null;
         } catch {
             return null;
         }
@@ -271,8 +345,9 @@ class CrmDatabase {
     }
 
     async putTracking(tracking) {
-        tracking.last_touched_at = new Date().toISOString();
-        await supabase.upsert('crm_tracking', tracking, 'row_uid');
+        const dbTracking = toDbTrackingRow(tracking);
+        dbTracking.last_touched_at = new Date().toISOString();
+        await supabase.upsert('crm_tracking', dbTracking, 'row_uid');
     }
 
     async putTrackings(trackings) {
@@ -280,8 +355,12 @@ class CrmDatabase {
         const chunkSize = 50;
         for (let i = 0; i < trackings.length; i += chunkSize) {
             const chunk = trackings.slice(i, i + chunkSize);
-            chunk.forEach(t => t.last_touched_at = now);
-            await supabase.upsert('crm_tracking', chunk, 'row_uid');
+            const normalizedChunk = chunk.map(t => {
+                const normalized = toDbTrackingRow(t);
+                normalized.last_touched_at = now;
+                return normalized;
+            });
+            await supabase.upsert('crm_tracking', normalizedChunk, 'row_uid');
         }
     }
 
@@ -289,18 +368,13 @@ class CrmDatabase {
         const existing = await this.getTracking(row_uid);
         if (!existing) {
             const tracking = {
+                ...TRACKING_DEFAULTS,
                 row_uid,
-                status: 'Process',
-                status_reason: '',
-                notes: '',
-                next_follow_up_date: null,
-                owner: '',
-                tags: [],
                 last_touched_at: new Date().toISOString(),
                 created_at: new Date().toISOString()
             };
             try {
-                await supabase.insert('crm_tracking', tracking);
+                await this.putTracking(tracking);
             } catch (e) {
                 // Might already exist due to race condition
                 console.warn('Tracking insert failed (may already exist):', e.message);
@@ -336,16 +410,7 @@ class CrmDatabase {
 
         return imports.map(row => ({
             ...row,
-            _tracking: trackingMap[row.row_uid] || {
-                status: 'Process',
-                status_reason: '',
-                notes: '',
-                next_follow_up_date: null,
-                owner: '',
-                tags: [],
-                last_touched_at: null,
-                created_at: null
-            }
+            _tracking: normalizeTrackingRow(trackingMap[row.row_uid] || { row_uid: row.row_uid })
         }));
     }
 

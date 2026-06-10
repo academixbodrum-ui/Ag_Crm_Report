@@ -2,6 +2,8 @@
  * tracking.js — CRM Tracking Table with filters, sorting, pagination, inline editing
  */
 
+const VISA_STATUS_OPTIONS = ['Beklemede', 'Evrak Hazırlığı', 'Randevuya Girdi', 'Onaylandı', 'İptal', 'Muaf'];
+
 class TrackingManager {
     constructor() {
         this.data = [];
@@ -12,6 +14,7 @@ class TrackingManager {
         this.sortDirection = 'desc';
         this.activeStatusDropdown = null;
         this.hideArchive = true; // Default: archive hidden
+        this.showOnlyWarnings = false; 
         this.selectedRows = new Set();
         this.currencyHistory = {}; // monthYear -> { currencyCode -> rate }
 
@@ -69,6 +72,15 @@ class TrackingManager {
             this.hideArchive = e.target.checked;
             this.applyFilters();
         });
+
+        // Warning Rules Toggle
+        const warningToggle = document.getElementById('toggle-warning-filter');
+        if (warningToggle) {
+            warningToggle.addEventListener('change', (e) => {
+                this.showOnlyWarnings = e.target.checked;
+                this.applyFilters();
+            });
+        }
 
         // Clear filters
         document.getElementById('btn-clear-filters').addEventListener('click', () => this.clearFilters());
@@ -186,6 +198,7 @@ class TrackingManager {
         this.data = await crmDB.getJoinedData();
         await this.loadCurrencyHistory();
         await this.populateFilterOptions();
+        await this.syncExemptVisaStatuses();
         this.applyFilters();
     }
 
@@ -243,7 +256,64 @@ class TrackingManager {
         return `${months[date.getMonth()]} ${date.getFullYear()}`;
     }
 
-    applyFilters() {
+    getProgramType(row = {}) {
+        return window.programTypeMap?.[row['Program']] || 'Diğer';
+    }
+
+    getVisaStatus(tracking = {}, row = {}) {
+        if (this.getProgramType(row) === 'Diğer') return 'Muaf';
+        const status = tracking.application_status || '';
+        if (VISA_STATUS_OPTIONS.includes(status) && status) return status;
+        return 'Beklemede';
+    }
+
+    async syncExemptVisaStatuses() {
+        const trackingsToUpdate = this.data
+            .filter(row => this.getProgramType(row) === 'Diğer' && row._tracking?.application_status !== 'Muaf')
+            .map(row => ({ ...(row._tracking || {}), row_uid: row.row_uid, application_status: 'Muaf' }));
+
+        if (trackingsToUpdate.length === 0) return;
+
+        await crmDB.putTrackings(trackingsToUpdate);
+        const updatedByUid = new Map(trackingsToUpdate.map(t => [t.row_uid, t]));
+        this.data.forEach(row => {
+            const updated = updatedByUid.get(row.row_uid);
+            if (updated) row._tracking = { ...(row._tracking || {}), ...updated };
+        });
+    }
+
+    parseNumber(value) {
+        if (value === null || value === undefined || value === '') return 0;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        const text = String(value).trim();
+        const normalized = text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text;
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    getRowValue(row, field) {
+        return this.parseNumber(row[field]);
+    }
+
+    getTotalCommission(row, tracking = {}) {
+        const csvCalc = this.getRowValue(row, 'Comm') + this.getRowValue(row, 'Cancellation') - this.getRowValue(row, 'Discount') - this.getRowValue(row, 'Represantative Comm');
+        const manualComm = this.parseNumber(tracking.manual_net_commission);
+        return csvCalc !== 0 ? csvCalc : manualComm;
+    }
+
+    getRemainingBonus(row, tracking = {}) {
+        return (this.getTotalCommission(row, tracking) * 0.15) - this.parseNumber(tracking.deposit_bonus) - this.parseNumber(tracking.consultant_bonus);
+    }
+
+    getTrackingSortValue(row, field) {
+        const tracking = row._tracking || {};
+        if (field === 'remaining_bonus') return this.getRemainingBonus(row, tracking);
+        if (['deposit_bonus', 'consultant_bonus', 'manual_net_commission'].includes(field)) return this.parseNumber(tracking[field]);
+        return (tracking[field] || '').toString().toLowerCase();
+    }
+
+    applyFilters(options = {}) {
+        const previousPage = this.currentPage;
         const search = document.getElementById('filter-search').value.toLowerCase().trim();
 
         // Status from checkbox dropdown
@@ -266,9 +336,49 @@ class TrackingManager {
         const programDateFrom = document.getElementById('filter-program-date-from').value;
         const programDateTo = document.getElementById('filter-program-date-to').value;
 
-        // const showMissing = document.getElementById('filter-missing')?.checked || false;
-
         this.filteredData = this.data.filter(row => {
+            // Warning Rules Filter logic
+            if (this.showOnlyWarnings) {
+                if (!window.visualRules || window.visualRules.length === 0) return false;
+                
+                const tracking = row._tracking || { status: '' };
+                const csvCalc = (parseFloat(String(row['Comm'] || '0').replace(/\./g, '').replace(',', '.')) || 0) + 
+                               (parseFloat(String(row['Cancellation'] || '0').replace(/\./g, '').replace(',', '.')) || 0) - 
+                               (parseFloat(String(row['Discount'] || '0').replace(/\./g, '').replace(',', '.')) || 0) - 
+                               (parseFloat(String(row['Represantative Comm'] || '0').replace(/\./g, '').replace(',', '.')) || 0);
+                const manualComm = tracking.manual_net_commission ? parseFloat(tracking.manual_net_commission) : 0;
+                const totalCommValue = (csvCalc !== 0) ? csvCalc : manualComm;
+
+                const getValForFilter = (field) => {
+                    const v = row[field];
+                    if (v === null || v === undefined || v === '') return 0;
+                    return typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 : v;
+                };
+
+                let matchesAnyRule = false;
+                for (const rule of window.visualRules) {
+                    if (rule.status_cond && tracking.status !== rule.status_cond) continue;
+                    
+                    let val = (rule.field_cond === 'total_commission') ? totalCommValue : getValForFilter(rule.field_cond);
+                    let target = parseFloat(rule.value_cond);
+                    let match = false;
+                    
+                    if (rule.operator_cond === '==' || rule.operator_cond === '=') match = (val === target);
+                    else if (rule.operator_cond === '!=') match = (val !== target);
+                    else if (rule.operator_cond === '>') match = (val > target);
+                    else if (rule.operator_cond === '<') match = (val < target);
+                    else if (rule.operator_cond === '>=') match = (val >= target);
+                    else if (rule.operator_cond === '<=') match = (val <= target);
+                    
+                    if (match) {
+                        matchesAnyRule = true;
+                        break;
+                    }
+                }
+                
+                if (!matchesAnyRule) return false;
+            }
+
             // If hideArchive is on, filter out archived rows
             if (this.hideArchive && row.is_missing_in_latest_upload) return false;
 
@@ -317,7 +427,12 @@ class TrackingManager {
 
         this.updateFilterStyles(); // Filtre stillerini güncelle
         this.applySort();
-        this.currentPage = 1;
+        if (options.preservePage) {
+            const maxPage = Math.max(1, Math.ceil(this.filteredData.length / this.pageSize));
+            this.currentPage = Math.min(previousPage, maxPage);
+        } else {
+            this.currentPage = 1;
+        }
         this.renderTable();
         this.updateSortIndicators();
     }
@@ -388,12 +503,22 @@ class TrackingManager {
             if (col === 'Name') {
                 valA = `${a['Name'] || ''} ${a['Surname'] || ''}`.toLowerCase();
                 valB = `${b['Name'] || ''} ${b['Surname'] || ''}`.toLowerCase();
+            } else if (col === 'application_status') {
+                valA = this.getVisaStatus(a._tracking || {}, a).toLowerCase();
+                valB = this.getVisaStatus(b._tracking || {}, b).toLowerCase();
             } else if (col === 'status') {
                 valA = (a._tracking.status || '').toLowerCase();
                 valB = (b._tracking.status || '').toLowerCase();
             } else if (col === 'next_follow_up_date') {
                 valA = a._tracking.next_follow_up_date || '';
                 valB = b._tracking.next_follow_up_date || '';
+            } else if (['deposit_bonus', 'consultant_bonus', 'remaining_bonus', 'manual_net_commission'].includes(col)) {
+                valA = this.getTrackingSortValue(a, col);
+                valB = this.getTrackingSortValue(b, col);
+                return (valA - valB) * dir;
+            } else if (['deposit_bonus_status', 'consultant_bonus_status'].includes(col)) {
+                valA = this.getTrackingSortValue(a, col);
+                valB = this.getTrackingSortValue(b, col);
             } else if (DATE_FIELDS.includes(col)) {
                 valA = a[col] || '';
                 valB = b[col] || '';
@@ -434,7 +559,7 @@ class TrackingManager {
         document.getElementById('filter-search').value = '';
         // Clear status checkboxes
         document.querySelectorAll('#status-multiselect-dropdown input[type="checkbox"]').forEach(cb => cb.checked = false);
-        document.getElementById('status-multiselect-btn').textContent = 'Durum Seç ▾';
+        document.getElementById('status-multiselect-btn').textContent = 'Ödeme Durumu Seç ▾';
         document.getElementById('filter-employee').value = '';
         document.getElementById('filter-program').value = '';
         document.getElementById('filter-currency').value = '';
@@ -443,6 +568,11 @@ class TrackingManager {
         document.getElementById('filter-record-date-to').value = '';
         document.getElementById('filter-program-date-from').value = '';
         document.getElementById('filter-program-date-to').value = '';
+        
+        const vrToggle = document.getElementById('toggle-warning-filter');
+        if (vrToggle) vrToggle.checked = false;
+        this.showOnlyWarnings = false;
+
         this.applyFilters();
     }
 
@@ -517,17 +647,17 @@ class TrackingManager {
 
             // Helper to get numeric value for calculation
             const getVal = (field) => {
-                const v = row[field];
-                if (v === null || v === undefined || v === '') return 0;
-                return typeof v === 'string' ? parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 : v;
+                return this.getRowValue(row, field);
             };
 
             const csvCalc = getVal('Comm') + getVal('Cancellation') - getVal('Discount') - getVal('Represantative Comm');
-            const manualComm = tracking.manual_net_commission ? parseFloat(tracking.manual_net_commission) : 0;
-            const totalCommValue = (csvCalc !== 0) ? csvCalc : manualComm;
+            const manualComm = this.parseNumber(tracking.manual_net_commission);
+            const totalCommValue = this.getTotalCommission(row, tracking);
             const isManualEntry = (csvCalc === 0);
+            const remainingBonus = this.getRemainingBonus(row, tracking);
+            tracking.remaining_bonus = remainingBonus;
 
-            // Evaluate visual rules
+            // Evaluate visual rules (Warnings)
             let rowStyle = '';
             let nameColStyle = '';
             if (window.visualRules) {
@@ -546,22 +676,10 @@ class TrackingManager {
                     else if (rule.operator_cond === '<=') match = (val <= target);
                     
                     if (match) {
-                        // Function to get RGB string
-                        let hex = rule.color || '#3b82f6';
-                        let r = 0, g = 0, b = 0;
-                        if (hex.length === 4) {
-                            r = parseInt(hex[1] + hex[1], 16);
-                            g = parseInt(hex[2] + hex[2], 16);
-                            b = parseInt(hex[3] + hex[3], 16);
-                        } else if (hex.length === 7) {
-                            r = parseInt(hex[1] + hex[2], 16);
-                            g = parseInt(hex[3] + hex[4], 16);
-                            b = parseInt(hex[5] + hex[6], 16);
-                        }
-                        
-                        // Uniform color regardless of row index
-                        rowStyle = `background: rgba(${r}, ${g}, ${b}, 0.25) !important;`; 
-                        nameColStyle = `background: rgba(${r}, ${g}, ${b}, 0.35) !important;`;
+                        // Constant Red for Warnings: r255 g0 b0
+                        rowStyle = `background: rgba(255, 0, 0, 0.20) !important;`; 
+                        nameColStyle = `background: rgba(255, 0, 0, 0.35) !important;`;
+                        break; // One rule match is enough for Warning status
                     }
                 }
             }
@@ -570,6 +688,8 @@ class TrackingManager {
             // But since our CSS uses [data-row-status] + !important, inline styles from visualRules 
             // will already be overridden for statuses defined in table.css.
             
+            const visaStatus = this.getVisaStatus(tracking, row);
+
             // MAIN ROW HTML
             const mainRowHtml = `
                 <tr class="${isMissing ? 'row-missing' : ''} ${this.selectedRows.has(row.row_uid) ? 'selected' : ''}" 
@@ -588,7 +708,10 @@ class TrackingManager {
                     <td class="td-school" title="${this.escapeHtml(row['School'] || '')}">${b('School', this.escapeHtml(row['School'] || ''))}</td>
                     <td class="td-date">${b('Record Date', formatDateDisplay(recordDate) || this.escapeHtml(recordDate || ''))}</td>
                     <td class="td-status" style="position: relative;">
-                        <span class="status-badge" data-status="${tracking.status}" onclick="event.stopPropagation(); trackingManager.toggleStatusDropdown(event, '${this.escapeAttr(row.row_uid)}')">${tracking.status}</span>
+                        <span class="status-badge" data-status="${this.escapeAttr(visaStatus)}" onclick="event.stopPropagation(); trackingManager.toggleStatusDropdown(event, '${this.escapeAttr(row.row_uid)}', 'application_status')">${this.escapeHtml(visaStatus || 'Boş')}</span>
+                    </td>
+                    <td class="td-status" style="position: relative;">
+                        <span class="status-badge" data-status="${this.escapeAttr(tracking.status)}" onclick="event.stopPropagation(); trackingManager.toggleStatusDropdown(event, '${this.escapeAttr(row.row_uid)}', 'status')">${this.escapeHtml(tracking.status || 'Boş')}</span>
                     </td>
                     <td class="td-date">${b('Program Start Date', formatDateDisplay(programDate) || this.escapeHtml(programDate || ''))}</td>
                     <td class="td-number td-total-comm" style="${isManualEntry ? 'color: var(--accent-red) !important; font-weight: 700;' : (Math.abs(totalCommValue - getVal('Comm')) > 0.01 ? 'color: var(--accent-amber) !important; font-weight: 700;' : '')}">
@@ -653,7 +776,8 @@ class TrackingManager {
                             onclick="event.stopPropagation()">
                     </td>
                     <td class="col-bonus">
-                        <select onchange="trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'deposit_bonus_status', this.value)"
+                        <select class="deposit-bonus-status-select" data-bonus-status="${this.escapeAttr(tracking.deposit_bonus_status || '')}"
+                            onchange="this.dataset.bonusStatus = this.value; trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'deposit_bonus_status', this.value)"
                             onclick="event.stopPropagation()">
                             <option value="">Seçiniz</option>
                             <option value="Hakediş" ${tracking.deposit_bonus_status === 'Hakediş' ? 'selected' : ''}>Hakediş</option>
@@ -667,7 +791,8 @@ class TrackingManager {
                             onclick="event.stopPropagation()">
                     </td>
                     <td class="col-bonus">
-                        <select onchange="trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'consultant_bonus_status', this.value)"
+                        <select class="consultant-bonus-status-select" data-bonus-status="${this.escapeAttr(tracking.consultant_bonus_status || '')}"
+                            onchange="this.dataset.bonusStatus = this.value; trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'consultant_bonus_status', this.value)"
                             onclick="event.stopPropagation()">
                             <option value="">Seçiniz</option>
                             <option value="Hakediş" ${tracking.consultant_bonus_status === 'Hakediş' ? 'selected' : ''}>Hakediş</option>
@@ -676,10 +801,10 @@ class TrackingManager {
                         </select>
                     </td>
                     <td class="td-number col-bonus td-remaining-bonus">
-                        ${formatNumber((totalCommValue * 0.15) - (parseFloat(tracking.deposit_bonus) || 0) - (parseFloat(tracking.consultant_bonus) || 0))}
+                        ${formatNumber(remainingBonus)}
                     </td>
 
-                    <td>
+                    <td class="td-notes">
                         <textarea class="inline-note" data-uid="${this.escapeAttr(row.row_uid)}" data-field="notes"
                             onchange="trackingManager.updateTrackingField('${this.escapeAttr(row.row_uid)}', 'notes', this.value)"
                             onclick="event.stopPropagation()">${this.escapeHtml(tracking.notes || '')}</textarea>
@@ -803,7 +928,7 @@ class TrackingManager {
     }
 
     // Status dropdown
-    toggleStatusDropdown(event, rowUid) {
+    toggleStatusDropdown(event, rowUid, field = 'status') {
         event.stopPropagation();
 
         this.closeStatusDropdown();
@@ -818,23 +943,32 @@ class TrackingManager {
         dropdown.style.left = rect.left + 'px';
 
         const statusColors = {
+            '': '#94a3b8',
+            'Beklemede': '#94a3b8',
+            'Evrak Hazırlığı': '#f59e0b',
+            'Randevuya Girdi': '#22c55e',
+            'Onaylandı': '#60a5fa',
+            'İptal': '#64748b',
+            'Muaf': 'transparent',
             'Process': '#22d4bf',
             'Visa': '#f59e0b',
             'Awaiting Payment': '#ec4899',
-            'School Payment': '#a855f7',
+            'School Payment': '#f59e0b',
             'Commission': '#22c55e',
             'Commission (Taksim)': '#10b981',
             'Completed': '#60a5fa',
             'Cancelled': '#888888'
         };
 
-        STATUSES.forEach(status => {
+        const options = field === 'application_status' ? VISA_STATUS_OPTIONS : STATUSES;
+
+        options.forEach(status => {
             const item = document.createElement('div');
             item.className = 'status-dropdown-item';
-            item.innerHTML = `<div class="dot" style="background: ${statusColors[status] || '#888'};"></div><span>${status}</span>`;
+            item.innerHTML = `<div class="dot" style="background: ${statusColors[status] || '#888'};"></div><span>${status || 'Boş'}</span>`;
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.changeStatus(rowUid, status);
+                this.changeStatus(rowUid, status, field);
             });
             dropdown.appendChild(item);
         });
@@ -850,35 +984,79 @@ class TrackingManager {
         }
     }
 
-    async changeStatus(rowUid, newStatus) {
+    async changeStatus(rowUid, newStatus, field = 'status') {
         this.closeStatusDropdown();
 
-        const tracking = await crmDB.getTracking(rowUid);
+        let tracking = await crmDB.getTracking(rowUid);
+        const row = this.data.find(r => r.row_uid === rowUid);
+        if (!tracking && row) {
+            tracking = { ...(row._tracking || {}), row_uid: rowUid };
+        }
+        if (field === 'application_status' && row && this.getProgramType(row) === 'Diğer') {
+            newStatus = 'Muaf';
+        }
         if (tracking) {
-            tracking.status = newStatus;
-            await crmDB.putTracking(tracking);
+            const oldStatus = tracking[field];
+            tracking[field] = newStatus;
+            try {
+                await crmDB.putTracking(tracking);
+            } catch (error) {
+                tracking[field] = oldStatus;
+                showToast('Kaydedilemedi: ' + error.message, 'error');
+                return;
+            }
 
             // Update local data
-            const row = this.data.find(r => r.row_uid === rowUid);
-            if (row) row._tracking.status = newStatus;
+            if (row) {
+                if (!row._tracking) row._tracking = {};
+                row._tracking[field] = newStatus;
+            }
 
             // Clear selection for this record
             this.selectedRows.delete(rowUid);
             
-            this.applyFilters();
-            showToast(`Durum "${newStatus}" olarak güncellendi.`, 'success');
+            if (field === 'status') {
+                this.applyFilters({ preservePage: true });
+            } else {
+                this.renderTable();
+            }
+            const label = field === 'status' ? 'Ödeme durumu' : 'Vize durumu';
+            showToast(`${label} "${newStatus}" olarak güncellendi.`, 'success');
         }
     }
 
     async updateTrackingField(rowUid, field, value) {
-        const tracking = await crmDB.getTracking(rowUid);
+        let tracking = await crmDB.getTracking(rowUid);
+        const row = this.data.find(r => r.row_uid === rowUid);
+        if (!tracking && row) {
+            tracking = { ...(row._tracking || {}), row_uid: rowUid };
+        }
         if (tracking) {
-            tracking[field] = value;
-            await crmDB.putTracking(tracking);
+            const previousTracking = row ? { ...(row._tracking || {}) } : { ...tracking };
+            const numericFields = ['manual_net_commission', 'deposit_bonus', 'consultant_bonus', 'remaining_bonus'];
+            tracking[field] = numericFields.includes(field) ? this.parseNumber(value) : value;
 
-            // Update local data
-            const row = this.data.find(r => r.row_uid === rowUid);
-            if (row) row._tracking[field] = value;
+            if (row) {
+                const mergedTracking = { ...(row._tracking || {}), ...tracking };
+                if (['manual_net_commission', 'deposit_bonus', 'consultant_bonus'].includes(field)) {
+                    tracking.remaining_bonus = this.getRemainingBonus(row, mergedTracking);
+                    mergedTracking.remaining_bonus = tracking.remaining_bonus;
+                }
+                row._tracking = mergedTracking;
+            }
+
+            try {
+                await crmDB.putTracking(tracking);
+            } catch (error) {
+                if (row) row._tracking = previousTracking;
+                showToast('Kaydedilemedi: ' + error.message, 'error');
+                this.renderTable();
+                return;
+            }
+
+            if (['manual_net_commission', 'deposit_bonus', 'consultant_bonus'].includes(field)) {
+                this.renderTable();
+            }
         }
     }
 
@@ -980,17 +1158,39 @@ class TrackingManager {
             <div class="modal-section">
                 <div class="modal-section-title">Takip Bilgileri</div>
                 <div class="modal-form-group">
-                    <label>Durum</label>
+                    <label>Vize Durumu</label>
+                    <select id="modal-application-status">
+                        ${VISA_STATUS_OPTIONS.map(s => `<option value="${s}" ${s === this.getVisaStatus(tracking, row) ? 'selected' : ''}>${s || 'Boş'}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="modal-form-group">
+                    <label>Ödeme Durumu</label>
                     <select id="modal-status">
                         ${STATUSES.map(s => `<option value="${s}" ${s === tracking.status ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>
                 </div>
                 <!-- Status specific fields -->
-                ${this.renderModalFormGroup('Durum Açıklaması', `<input type="text" id="modal-status-reason" value="${this.escapeHtml(tracking.status_reason || '')}" placeholder="Kısa açıklama...">`, 'status_reason', tracking.status)}
+                ${this.renderModalFormGroup('Ödeme Durumu Açıklaması', `<input type="text" id="modal-status-reason" value="${this.escapeHtml(tracking.status_reason || '')}" placeholder="Kısa açıklama...">`, 'status_reason', tracking.status)}
                 
                 ${this.renderModalFormGroup('Depozito Primi', `<input type="number" id="modal-deposit-bonus" value="${tracking.deposit_bonus || ''}" placeholder="0.00">`, 'deposit_bonus', tracking.status)}
+
+                ${this.renderModalFormGroup('Depozito Primi Durumu', `<select id="modal-deposit-bonus-status">
+                    <option value="">Seçiniz</option>
+                    <option value="Hakediş" ${tracking.deposit_bonus_status === 'Hakediş' ? 'selected' : ''}>Hakediş</option>
+                    <option value="Ödendi" ${tracking.deposit_bonus_status === 'Ödendi' ? 'selected' : ''}>Ödendi</option>
+                    <option value="Prim Yok" ${tracking.deposit_bonus_status === 'Prim Yok' ? 'selected' : ''}>Prim Yok</option>
+                </select>`, 'deposit_bonus_status', tracking.status)}
                 
                 ${this.renderModalFormGroup('Danışman Primi', `<input type="number" id="modal-consultant-bonus" value="${tracking.consultant_bonus || ''}" placeholder="0.00">`, 'consultant_bonus', tracking.status)}
+
+                ${this.renderModalFormGroup('Danışman Primi Durumu', `<select id="modal-consultant-bonus-status">
+                    <option value="">Seçiniz</option>
+                    <option value="Hakediş" ${tracking.consultant_bonus_status === 'Hakediş' ? 'selected' : ''}>Hakediş</option>
+                    <option value="Ödendi" ${tracking.consultant_bonus_status === 'Ödendi' ? 'selected' : ''}>Ödendi</option>
+                    <option value="Prim Yok" ${tracking.consultant_bonus_status === 'Prim Yok' ? 'selected' : ''}>Prim Yok</option>
+                </select>`, 'consultant_bonus_status', tracking.status)}
+
+                ${this.renderModalFormGroup('Kalan Prim', `<input type="number" id="modal-remaining-bonus" value="${this.getRemainingBonus(row, tracking)}" readonly>`, 'remaining_bonus', tracking.status)}
 
                 ${this.renderModalFormGroup('Notlar', `<textarea id="modal-notes" placeholder="Detaylı notlar...">${this.escapeHtml(tracking.notes || '')}</textarea>`, 'notes', tracking.status)}
 
@@ -1026,10 +1226,15 @@ class TrackingManager {
         const row = this.data.find(r => r.row_uid === rowUid);
         if (!row) return;
 
-        const tracking = await crmDB.getTracking(rowUid);
-        if (!tracking) return;
+        let tracking = await crmDB.getTracking(rowUid);
+        if (!tracking) {
+            tracking = { ...(row._tracking || {}), row_uid: rowUid };
+        }
 
         const newStatus = document.getElementById('modal-status').value;
+        const newApplicationStatus = this.getProgramType(row) === 'Diğer'
+            ? 'Muaf'
+            : (document.getElementById('modal-application-status')?.value || '');
         
         // Check required fields based on rules
         const rules = window.statusRules?.[newStatus] || {};
@@ -1037,12 +1242,14 @@ class TrackingManager {
 
         // Dynamic fields from tracking
         const formFields = [
-            { id: 'modal-status-reason', name: 'status_reason', label: 'Durum Açıklaması' },
+            { id: 'modal-status-reason', name: 'status_reason', label: 'Ödeme Durumu Açıklaması' },
             { id: 'modal-notes', name: 'notes', label: 'Notlar' },
             { id: 'modal-follow-up', name: 'next_follow_up_date', label: 'Sonraki Takip Tarihi' },
             { id: 'modal-owner', name: 'owner', label: 'Sahip' },
             { id: 'modal-deposit-bonus', name: 'deposit_bonus', label: 'Depozito Primi' },
-            { id: 'modal-consultant-bonus', name: 'consultant_bonus', label: 'Danışman Primi' }
+            { id: 'modal-deposit-bonus-status', name: 'deposit_bonus_status', label: 'Depozito Primi Durumu' },
+            { id: 'modal-consultant-bonus', name: 'consultant_bonus', label: 'Danışman Primi' },
+            { id: 'modal-consultant-bonus-status', name: 'consultant_bonus_status', label: 'Danışman Primi Durumu' }
         ];
 
         formFields.forEach(f => {
@@ -1054,8 +1261,10 @@ class TrackingManager {
                 errors.push(f.label);
             }
             
-            tracking[f.name] = el.value || null;
+            tracking[f.name] = ['deposit_bonus', 'consultant_bonus'].includes(f.name) ? this.parseNumber(el.value) : (el.value || null);
         });
+
+        tracking.remaining_bonus = this.getRemainingBonus(row, tracking);
 
         // Also check CSV source fields that are marked as required
         this.fields.filter(f => CSV_COLUMNS.includes(f)).forEach(f => {
@@ -1071,7 +1280,13 @@ class TrackingManager {
         }
 
         tracking.status = newStatus;
-        await crmDB.putTracking(tracking);
+        tracking.application_status = newApplicationStatus;
+        try {
+            await crmDB.putTracking(tracking);
+        } catch (error) {
+            showToast('Kaydedilemedi: ' + error.message, 'error');
+            return;
+        }
 
         // Update local data
         if (row) {
@@ -1080,7 +1295,7 @@ class TrackingManager {
 
         document.getElementById('detail-modal').style.display = 'none';
         this.selectedRows.delete(rowUid);
-        this.applyFilters();
+        this.applyFilters({ preservePage: true });
         showToast('Takip bilgileri kaydedildi.', 'success');
     }
 
@@ -1098,8 +1313,8 @@ class TrackingManager {
             'Total Debt', 'Paid', 'Refund', 'Tuition',
             'Net Komisyon', 'USD Net Komisyon',
             'Currency', 'Represantative', 'Represantative Comm', 'School Balance',
-            'Status', 'Status Reason', 'Notes', 'Follow-Up Date', 'Owner',
-            'Deposit Bonus', 'Deposit Bonus Status', 'Consultant Bonus', 'Consultant Bonus Status'
+            'Vize Durumu', 'Ödeme Durumu', 'Ödeme Durumu Açıklaması', 'Notes', 'Follow-Up Date', 'Owner',
+            'Deposit Bonus', 'Deposit Bonus Status', 'Consultant Bonus', 'Consultant Bonus Status', 'Remaining Bonus'
         ];
 
         const dataRows = this.filteredData.map(row => {
@@ -1137,10 +1352,11 @@ class TrackingManager {
                 })(),
                 row['Currency'] || '', row['Represantative'] || '', row['Represantative Comm'] || 0,
                 row['School Balance'] || 0,
-                tracking.status || '', tracking.status_reason || '', tracking.notes || '',
+                this.getVisaStatus(tracking, row), tracking.status || '', tracking.status_reason || '', tracking.notes || '',
                 tracking.next_follow_up_date || '', tracking.owner || '',
                 tracking.deposit_bonus || '', tracking.deposit_bonus_status || '',
-                tracking.consultant_bonus || '', tracking.consultant_bonus_status || ''
+                tracking.consultant_bonus || '', tracking.consultant_bonus_status || '',
+                this.getRemainingBonus(row, tracking)
             ];
         });
 
@@ -1176,7 +1392,8 @@ class TrackingManager {
             'Cancellation', 'Balance', 'Comm', 'Discount',
             'Net Komisyon', 'USD Net Komisyon',
             'Currency', 'Represantative', 'Represantative Comm', 'School Balance',
-            'Status', 'Status Reason', 'Notes', 'Follow-Up Date', 'Owner'
+            'Vize Durumu', 'Ödeme Durumu', 'Ödeme Durumu Açıklaması', 'Notes', 'Follow-Up Date', 'Owner',
+            'Deposit Bonus', 'Deposit Bonus Status', 'Consultant Bonus', 'Consultant Bonus Status', 'Remaining Bonus'
         ];
 
         const rows = this.filteredData.map(row => {
@@ -1213,8 +1430,11 @@ class TrackingManager {
                 })(),
                 row['Currency'] || '', row['Represantative'] || '', row['Represantative Comm'] ?? '',
                 row['School Balance'] ?? '',
-                row._tracking.status, row._tracking.status_reason || '', row._tracking.notes || '',
-                row._tracking.next_follow_up_date || '', row._tracking.owner || ''
+                this.getVisaStatus(row._tracking || {}, row), row._tracking.status, row._tracking.status_reason || '', row._tracking.notes || '',
+                row._tracking.next_follow_up_date || '', row._tracking.owner || '',
+                row._tracking.deposit_bonus || '', row._tracking.deposit_bonus_status || '',
+                row._tracking.consultant_bonus || '', row._tracking.consultant_bonus_status || '',
+                this.getRemainingBonus(row, row._tracking || {})
             ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(';');
         });
 
@@ -1312,14 +1532,14 @@ class TrackingManager {
         try {
             const newStatus = document.getElementById('bulk-status-select').value;
             if (!newStatus) {
-                showToast('Lütfen bir durum seçin.', 'warning');
+                showToast('Lütfen bir ödeme durumu seçin.', 'warning');
                 return;
             }
 
             const uids = Array.from(this.selectedRows);
             if (uids.length === 0) return;
 
-            if (!confirm(`${uids.length} adet kaydın durumunu "${newStatus}" olarak değiştirmek istediğinize emin misiniz?`)) {
+            if (!confirm(`${uids.length} adet kaydın ödeme durumunu "${newStatus}" olarak değiştirmek istediğinize emin misiniz?`)) {
                 return;
             }
 
@@ -1347,7 +1567,7 @@ class TrackingManager {
             const selectAll = document.getElementById('select-all-checkbox');
             if (selectAll) selectAll.checked = false;
             
-            this.applyFilters();
+            this.applyFilters({ preservePage: true });
             showToast(`${trackingsToUpdate.length} kayıt başarıyla güncellendi.`, 'success');
         } catch (error) {
             console.error('Bulk update error:', error);
@@ -1397,7 +1617,7 @@ function applyStatusFilter() {
 
     const btn = document.getElementById('status-multiselect-btn');
     if (selected.length === 0) {
-        btn.textContent = 'Durum Seç ▾';
+        btn.textContent = 'Ödeme Durumu Seç ▾';
     } else if (selected.length === allCheckboxes.length) {
         btn.textContent = 'Tümü Seçili ▾';
     } else if (selected.length === 1) {

@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS crm_import_rows (
 -- 2. crm_tracking - User tracking data (never overwritten by CSV upload)
 CREATE TABLE IF NOT EXISTS crm_tracking (
     row_uid TEXT PRIMARY KEY,
-    status TEXT DEFAULT 'New',
+    status TEXT DEFAULT '',
     status_reason TEXT DEFAULT '',
     notes TEXT DEFAULT '',
     next_follow_up_date DATE,
@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS crm_tracking (
     last_touched_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Existing installations may have been created before bonus columns existed.
+ALTER TABLE crm_tracking ADD COLUMN IF NOT EXISTS manual_net_commission NUMERIC DEFAULT 0;
+ALTER TABLE crm_tracking ADD COLUMN IF NOT EXISTS deposit_bonus NUMERIC DEFAULT 0;
+ALTER TABLE crm_tracking ADD COLUMN IF NOT EXISTS deposit_bonus_status TEXT DEFAULT '';
+ALTER TABLE crm_tracking ADD COLUMN IF NOT EXISTS consultant_bonus NUMERIC DEFAULT 0;
+ALTER TABLE crm_tracking ADD COLUMN IF NOT EXISTS consultant_bonus_status TEXT DEFAULT '';
+ALTER TABLE crm_tracking ADD COLUMN IF NOT EXISTS remaining_bonus NUMERIC DEFAULT 0;
 
 -- 3. upload_history - Track each CSV upload
 CREATE TABLE IF NOT EXISTS upload_history (

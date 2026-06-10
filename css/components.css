@@ -256,12 +256,14 @@
    ========================================== */
 
 .filters-bar {
-    background: linear-gradient(to right, #111827, #1a2236);
-    border: 1px solid var(--border-accent);
+    background: linear-gradient(135deg, #161d2e, #111827);
+    border: 1px solid var(--border-secondary);
+    border-top: 1px solid var(--border-accent);
     border-radius: var(--radius-lg);
     padding: 16px 20px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow-md);
+    margin-top: 8px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .filter-row {
@@ -483,6 +485,14 @@
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
 }
 
+.toggle-warning-cols input[type="checkbox"] {
+    accent-color: var(--accent-red) !important;
+}
+
+.toggle-warning-cols span {
+    color: var(--accent-red) !important;
+}
+
 /* ==========================================
    STATUS BADGES
    ========================================== */
@@ -514,13 +524,80 @@
     flex-shrink: 0;
 }
 
-.status-badge[data-status="Process"] {
+.status-badge[data-status=""] {
+    background: #e5e7eb;
+    color: #111827;
+    border: 1px solid #9ca3af;
+}
+
+.status-badge[data-status=""]::before {
+    background: #111827;
+}
+
+.status-badge[data-status="Beklemede"] {
+    background: #e5e7eb;
+    color: #111827;
+    border: 1px solid #9ca3af;
+}
+
+.status-badge[data-status="Beklemede"]::before {
+    background: #111827;
+}
+
+.status-badge[data-status="Evrak Hazırlığı"] {
+    background: #f59e0b;
+    color: #000000;
+}
+
+.status-badge[data-status="Evrak Hazırlığı"]::before {
+    background: #000000;
+}
+
+.status-badge[data-status="Randevuya Girdi"] {
+    background: #22c55e;
+    color: #000000;
+}
+
+.status-badge[data-status="Randevuya Girdi"]::before {
+    background: #000000;
+}
+
+.status-badge[data-status="Onaylandı"] {
+    background: #3b82f6;
+    color: #ffffff;
+}
+
+.status-badge[data-status="Onaylandı"]::before {
+    background: #ffffff;
+}
+
+.status-badge[data-status="İptal"] {
     background: #64748b;
     color: #ffffff;
 }
 
-.status-badge[data-status="Process"]::before {
+.status-badge[data-status="İptal"]::before {
     background: #ffffff;
+}
+
+.status-badge[data-status="Muaf"] {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.status-badge[data-status="Muaf"]::before {
+    background: transparent;
+    border: 1px solid var(--text-tertiary);
+}
+
+.status-badge[data-status="Process"] {
+    background: #22d4bf;
+    color: #000000;
+}
+
+.status-badge[data-status="Process"]::before {
+    background: #000000;
 }
 
 .status-badge[data-status="Visa"] {
@@ -533,7 +610,7 @@
 }
 
 .status-badge[data-status="Awaiting Payment"] {
-    background: #ec4899;
+    background: #86efac;
     color: #000000;
 }
 
@@ -542,12 +619,12 @@
 }
 
 .status-badge[data-status="School Payment"] {
-    background: #a855f7;
-    color: #ffffff;
+    background: #f59e0b;
+    color: #000000;
 }
 
 .status-badge[data-status="School Payment"]::before {
-    background: #ffffff;
+    background: #000000;
 }
 
 .status-badge[data-status="Commission"] {

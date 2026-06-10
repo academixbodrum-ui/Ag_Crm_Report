@@ -310,7 +310,6 @@ class DashboardManager {
             this.renderPivotCurrency(filteredData);
         } else if (this.currentView === 'dash-school') {
             this.renderPivotSchoolDetailed(filteredData);
-            this.renderPivotSchool(filteredData); 
         } else if (this.currentView === 'dash-bonus') {
             this.renderBonusKPIs(filteredData);
             this.renderBonusByStatus(filteredData);
@@ -350,7 +349,6 @@ class DashboardManager {
         
         
         show('pivot-school-detailed', isSchool);
-        show('pivot-school', isSchool);
 
         // Bonus view
         const bonusGrid = document.getElementById('kpi-bonus-grid');
@@ -443,7 +441,7 @@ class DashboardManager {
         STATUSES.forEach(s => statusGroups[s] = { count: 0, usdComm: 0 });
 
         data.forEach(row => {
-            const status = row._tracking.status || 'Process';
+            const status = row._tracking.status || '';
             if (!statusGroups[status]) statusGroups[status] = { count: 0, usdComm: 0 };
             
             statusGroups[status].count++;
@@ -453,7 +451,7 @@ class DashboardManager {
         const rows = Object.entries(statusGroups)
             .filter(([_, stats]) => stats.count > 0 || stats.usdComm > 0)
             .map(([status, stats]) => [
-                status,
+                status || 'Boş',
                 stats.count,
                 formatNumber(stats.usdComm)
             ]).sort((a, b) => b[1] - a[1]);
@@ -496,7 +494,7 @@ class DashboardManager {
                 _netComm: netComm,
                 _usdComm: usdComm,
                 _displayName: `${row['Name'] || ''} ${row['Surname'] || ''}`.trim(),
-                _status: row._tracking.status || 'Process'
+                _status: row._tracking.status || ''
             };
         });
 
@@ -539,7 +537,7 @@ class DashboardManager {
             <tr>
                 <td class="td-name">${this.escapeHtml(r._displayName)}</td>
                 <td class="td-school">${this.escapeHtml(r['School'] || '')}</td>
-                <td class="td-status"><span class="status-badge" data-status="${r._status}">${r._status}</span></td>
+                <td class="td-status"><span class="status-badge" data-status="${r._status}">${r._status || 'Boş'}</span></td>
                 <td class="td-number">${formatNumber(r._netComm)}</td>
                 <td class="td-currency">${this.escapeHtml(r['Currency'] || '')}</td>
                 <td class="td-number">${formatNumber(r._usdComm)}</td>
@@ -560,7 +558,7 @@ class DashboardManager {
     showEmpty() {
         const containers = ['kpi-grid', 'status-distribution',
             'pivot-employee', 'pivot-program',
-            'pivot-school', 'pivot-currency'];
+            'pivot-school-detailed', 'pivot-currency'];
 
         containers.forEach(id => {
             const el = document.getElementById(id);
@@ -637,15 +635,16 @@ class DashboardManager {
         const statusCounts = {};
         STATUSES.forEach(s => statusCounts[s] = 0);
         data.forEach(row => {
-            const st = row._tracking.status || 'Process';
+            const st = row._tracking.status || '';
             statusCounts[st] = (statusCounts[st] || 0) + 1;
         });
 
         const statusColors = {
+            '': '#94a3b8',
             'Process': '#22d4bf',
             'Visa': '#f59e0b',
             'Awaiting Payment': '#ec4899',
-            'School Payment': '#a855f7',
+            'School Payment': '#f59e0b',
             'Commission': '#22c55e',
             'Commission (Taksim)': '#10b981',
             'Completed': '#60a5fa',
@@ -660,7 +659,7 @@ class DashboardManager {
             return `
                 <div class="status-dist-item">
                     <span class="status-dist-count" style="color: ${color};">${count}</span>
-                    <span class="status-dist-label">${status}</span>
+                    <span class="status-dist-label">${status || 'Boş'}</span>
                     <div class="status-dist-bar">
                         <div class="status-dist-bar-fill" style="width: ${pct}%; background: ${color};"></div>
                     </div>
@@ -864,14 +863,16 @@ class DashboardManager {
         const rows = Object.entries(groups).map(([school, items]) => ({
             group: school || '(Belirtilmemiş)',
             count: items.length,
-            totalTuition: this.sumField(items, 'Tuition'),
-            totalBalance: this.sumField(items, 'Balance')
+            balance: this.sumField(items, 'Balance'),
+            schoolBalance: this.sumField(items, 'School Balance'),
+            usdComm: items.reduce((sum, row) => sum + this.calculateUsdComm(row), 0)
         })).sort((a, b) => b.count - a.count);
 
         const totals = {
             count: rows.reduce((s, r) => s + r.count, 0),
-            tuition: rows.reduce((s, r) => s + r.totalTuition, 0),
-            balance: rows.reduce((s, r) => s + r.totalBalance, 0)
+            balance: rows.reduce((s, r) => s + r.balance, 0),
+            schoolBalance: rows.reduce((s, r) => s + r.schoolBalance, 0),
+            usdComm: rows.reduce((s, r) => s + r.usdComm, 0)
         };
 
         const container = document.getElementById('pivot-school-detailed');
@@ -880,10 +881,10 @@ class DashboardManager {
                 * Aylık/Yıllık döküm için bir okula tıklayın.
             </div>
             ${this.buildPivotTable(
-                ['School', 'Kayıt', 'Tuition', 'Balance'],
-                rows.map(r => [r.group, r.count, formatNumber(r.totalTuition), formatNumber(r.totalBalance)]),
-                ['Toplam', totals.count, formatNumber(totals.tuition), formatNumber(totals.balance)],
-                [false, false, true, true]
+                ['School', 'Kayıt', 'Kalan Borç', 'Okula Borç', 'USD Net Komisyon'],
+                rows.map(r => [r.group, r.count, formatNumber(r.balance), formatNumber(r.schoolBalance), formatNumber(r.usdComm)]),
+                ['Toplam', totals.count, formatNumber(totals.balance), formatNumber(totals.schoolBalance), formatNumber(totals.usdComm)],
+                [false, false, true, true, true]
             )}
         `;
 
@@ -913,9 +914,9 @@ class DashboardManager {
         const rows = Object.entries(timeGroups).map(([key, info]) => ({
             period: `${info.year} / ${this.getMonthName(info.month)}`,
             count: info.items.length,
-            tuition: this.sumField(info.items, 'Tuition'),
-            paid: this.sumField(info.items, 'Paid'),
-            balance: this.sumField(info.items, 'Balance')
+            balance: this.sumField(info.items, 'Balance'),
+            schoolBalance: this.sumField(info.items, 'School Balance'),
+            usdComm: info.items.reduce((sum, row) => sum + this.calculateUsdComm(row), 0)
         })).sort((a, b) => b.period.localeCompare(a.period));
 
         // Create a modal or overlay for drill-down
@@ -929,8 +930,8 @@ class DashboardManager {
                 </div>
                 <div class="drill-down-body">
                     ${this.buildPivotTable(
-                        ['Dönem (Yıl/Ay)', 'Kayıt', 'Tuition', 'Paid', 'Balance'],
-                        rows.map(r => [r.period, r.count, formatNumber(r.tuition), formatNumber(r.paid), formatNumber(r.balance)]),
+                        ['Dönem (Yıl/Ay)', 'Kayıt', 'Kalan Borç', 'Okula Borç', 'USD Net Komisyon'],
+                        rows.map(r => [r.period, r.count, formatNumber(r.balance), formatNumber(r.schoolBalance), formatNumber(r.usdComm)]),
                         null,
                         [false, false, true, true, true]
                     )}
@@ -973,33 +974,6 @@ class DashboardManager {
             rows.map(r => [r.group, r.count, formatNumber(r.tuition), formatNumber(r.balance)]),
             ['Toplam', totals.count, formatNumber(totals.tuition), formatNumber(totals.balance)],
             [false, false, true, true]
-        );
-    }
-
-    renderPivotSchool(data) {
-        const groups = {};
-        data.forEach(row => {
-            const key = `${row['School'] || '(Boş)'} / ${row['School Center'] || '(Boş)'}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(row);
-        });
-
-        const rows = Object.entries(groups).map(([key, items]) => ({
-            group: key,
-            count: items.length,
-            schoolBalance: this.sumField(items, 'School Balance')
-        })).sort((a, b) => b.count - a.count);
-
-        const totals = {
-            count: rows.reduce((s, r) => s + r.count, 0),
-            schoolBalance: rows.reduce((s, r) => s + r.schoolBalance, 0)
-        };
-
-        document.getElementById('pivot-school').innerHTML = this.buildPivotTable(
-            ['School / Center', 'Kayıt', 'School Balance'],
-            rows.map(r => [r.group, r.count, formatNumber(r.schoolBalance)]),
-            ['Toplam', totals.count, formatNumber(totals.schoolBalance)],
-            [false, false, true]
         );
     }
 

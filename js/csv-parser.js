@@ -21,7 +21,7 @@ const NUMERIC_FIELDS = [
 
 const DATE_FIELDS = ['Record Date', 'Program Start Date'];
 
-const STATUSES = ['Process', 'Visa', 'Awaiting Payment', 'School Payment', 'Commission', 'Commission (Taksim)', 'Completed', 'Cancelled'];
+const STATUSES = ['', 'Process', 'Awaiting Payment', 'School Payment', 'Commission', 'Commission (Taksim)', 'Completed', 'Cancelled'];
 
 /**
  * Read a file as text with Latin-1 encoding

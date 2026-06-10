@@ -295,12 +295,31 @@ body {
 }
 
 .page-header {
-    margin-bottom: 28px;
+    margin-bottom: 32px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #0f172a, #0a0e1a);
+    border: 1px solid var(--border-primary);
+    border-left: 4px solid var(--accent-blue);
+    border-radius: var(--radius-md);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100%;
+    background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent 70%);
+    pointer-events: none;
 }
 
 .page-header h1 {

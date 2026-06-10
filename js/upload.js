@@ -278,12 +278,18 @@ class UploadManager {
         if (newTrackingUIDs.length > 0) {
             const trackingRecords = newTrackingUIDs.map(uid => ({
                 row_uid: uid,
-                status: 'Process',
+                status: '',
                 status_reason: '',
                 notes: '',
                 next_follow_up_date: null,
                 owner: '',
                 tags: [],
+                manual_net_commission: 0,
+                deposit_bonus: 0,
+                deposit_bonus_status: '',
+                consultant_bonus: 0,
+                consultant_bonus_status: '',
+                remaining_bonus: 0,
                 last_touched_at: new Date().toISOString(),
                 created_at: new Date().toISOString()
             }));

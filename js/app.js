@@ -165,7 +165,7 @@ function initModal() {
 
 async function migrateOldStatuses() {
     const OLD_TO_NEW = {
-        'New': 'Process',
+        'New': '',
         'Contacted': 'Process',
         'In Progress': 'Process',
         'On Hold': 'Process'

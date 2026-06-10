@@ -63,22 +63,54 @@
     min-width: 80px;
 }
 
+.data-table .deposit-bonus-status-select[data-bonus-status="Hakediş"],
+.data-table .consultant-bonus-status-select[data-bonus-status="Hakediş"] {
+    background: #16a34a;
+    border-color: #22c55e;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.data-table .deposit-bonus-status-select[data-bonus-status="Prim Yok"],
+.data-table .consultant-bonus-status-select[data-bonus-status="Prim Yok"] {
+    background: #d1d5db;
+    border-color: #9ca3af;
+    color: #000000;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.data-table .deposit-bonus-status-select[data-bonus-status="Ödendi"],
+.data-table .consultant-bonus-status-select[data-bonus-status="Ödendi"] {
+    background: #2563eb;
+    border-color: #3b82f6;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.data-table .deposit-bonus-status-select option,
+.data-table .consultant-bonus-status-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
 .data-table thead {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 50;
+    background: #1a2236; 
 }
 
 .data-table th {
-    padding: 8px 10px;
+    padding: 12px 10px;
     text-align: center;
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.9rem;
+    background: #1a2236;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid var(--border-primary);
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--accent-blue);
     cursor: pointer;
     user-select: none;
     transition: color var(--transition-fast);
@@ -237,6 +269,7 @@
 .data-table td.td-notes {
     width: 250px;
     min-width: 200px;
+    max-width: 250px;
 }
 
 .data-table td.td-email {
@@ -282,17 +315,12 @@
     background-color: #000000 !important;
 }
 
-/* 2. Process: Varsayılan (Renk yok) */
+/* 2. Process: Turkuaz */
 .data-table tbody tr[data-row-status="Process"] {
-    background-color: transparent !important;
+    background-color: rgba(34, 212, 191, 0.18) !important;
 }
-
-/* 3. Visa: Açık Turuncu / Amber */
-.data-table tbody tr[data-row-status="Visa"] {
-    background-color: rgba(245, 158, 11, 0.15) !important;
-}
-.data-table tbody tr[data-row-status="Visa"] td.td-name {
-    background-color: color-mix(in srgb, #f59e0b 22%, #1a2236) !important;
+.data-table tbody tr[data-row-status="Process"] td.td-name {
+    background-color: color-mix(in srgb, #22d4bf 22%, #1a2236) !important;
 }
 
 /* --- Mavi Ton Sıralaması --- */
@@ -321,22 +349,22 @@
     background-color: color-mix(in srgb, #3b82f6 25%, #1a2236) !important;
 }
 
-/* --- Eflatun - Mor Ton Sıralaması --- */
+/* --- Yeşil Ton Sıralaması (Ödemeler) --- */
 
-/* 7. Awaiting Payment: Fuşya Eflatun */
+/* 7. Awaiting Payment: Daha Açık ve Belirgin Limon Yeşili */
 .data-table tbody tr[data-row-status="Awaiting Payment"] {
-    background-color: rgba(236, 72, 153, 0.15) !important;
+    background-color: rgba(74, 222, 128, 0.18) !important;
 }
 .data-table tbody tr[data-row-status="Awaiting Payment"] td.td-name {
-    background-color: color-mix(in srgb, #ec4899 20%, #1a2236) !important;
+    background-color: color-mix(in srgb, #4ade80 22%, #1a2236) !important;
 }
 
-/* 8. School Payment: Kraliyet Moru */
+/* 8. School Payment: Sarı */
 .data-table tbody tr[data-row-status="School Payment"] {
-    background-color: rgba(168, 85, 247, 0.18) !important;
+    background-color: rgba(245, 158, 11, 0.20) !important;
 }
 .data-table tbody tr[data-row-status="School Payment"] td.td-name {
-    background-color: color-mix(in srgb, #a855f7 22%, #1a2236) !important;
+    background-color: color-mix(in srgb, #f59e0b 25%, #1a2236) !important;
 }
 
 /* Hover Efekti (Tüm Durumlar İçin) */
@@ -385,7 +413,9 @@
     color: var(--text-secondary);
     font-family: inherit;
     font-size: 0.95rem;
-    width: 150px;
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
     transition: all var(--transition-fast);
     resize: none;
     height: 28px;
@@ -595,4 +625,4 @@
 
 .data-table tr.selected td.td-name {
     background: #242c42 !important; /* Lighter than normal sticky background */
-}
+}
