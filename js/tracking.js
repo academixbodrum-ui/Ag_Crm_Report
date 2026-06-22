@@ -801,7 +801,15 @@ class TrackingManager {
                         </select>
                     </td>
                     <td class="td-number col-bonus td-remaining-bonus">
-                        ${formatNumber(remainingBonus)}
+                        <div class="remaining-bonus-content">
+                            <span>${formatNumber(remainingBonus)}</span>
+                            <button type="button" class="remaining-bonus-apply-btn" ${remainingBonus <= 0 ? 'disabled' : ''}
+                                title="Kalan primi danisman primine aktar"
+                                aria-label="Kalan primi danisman primine aktar"
+                                onclick="event.stopPropagation(); trackingManager.applyRemainingBonusToConsultant('${this.escapeAttr(row.row_uid)}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </button>
+                        </div>
                     </td>
 
                     <td class="td-notes">
@@ -1058,6 +1066,41 @@ class TrackingManager {
                 this.renderTable();
             }
         }
+    }
+
+    async applyRemainingBonusToConsultant(rowUid) {
+        const row = this.data.find(r => r.row_uid === rowUid);
+        if (!row) return;
+
+        let tracking = await crmDB.getTracking(rowUid);
+        if (!tracking) {
+            tracking = { ...(row._tracking || {}), row_uid: rowUid };
+        }
+
+        const previousTracking = { ...(row._tracking || {}) };
+        const currentTracking = { ...(row._tracking || {}), ...tracking };
+        const remainingBonus = this.getRemainingBonus(row, currentTracking);
+        if (remainingBonus <= 0) return;
+
+        tracking.consultant_bonus = remainingBonus;
+        tracking.consultant_bonus_status = 'Hakedi\u015f';
+
+        const mergedTracking = { ...(row._tracking || {}), ...tracking };
+        tracking.remaining_bonus = this.getRemainingBonus(row, mergedTracking);
+        mergedTracking.remaining_bonus = tracking.remaining_bonus;
+        row._tracking = mergedTracking;
+
+        try {
+            await crmDB.putTracking(tracking);
+        } catch (error) {
+            row._tracking = previousTracking;
+            showToast('Kaydedilemedi: ' + error.message, 'error');
+            this.renderTable();
+            return;
+        }
+
+        this.renderTable();
+        showToast('Kalan prim danisman primine aktarildi.', 'success');
     }
 
     // Detail modal

@@ -48,6 +48,43 @@
     font-weight: 700;
 }
 
+.remaining-bonus-content {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.remaining-bonus-apply-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #22c55e;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.16);
+    color: #86efac;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.remaining-bonus-apply-btn:hover {
+    background: #16a34a;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.remaining-bonus-apply-btn:disabled {
+    border-color: var(--border-primary);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.45;
+    transform: none;
+}
+
 .data-table select,
 .data-table input[type="number"] {
     background: var(--bg-input);
