@@ -493,8 +493,10 @@ class TrackingManager {
                 if (aM !== bM) return aM - bM;
                 
                 // Then sort by 0001 counter
-                const cA = a.row_uid.split('|')[3] || '';
-                const cB = b.row_uid.split('|')[3] || '';
+                const partsA = a.row_uid.split('|');
+                const partsB = b.row_uid.split('|');
+                const cA = partsA[partsA.length - 1] || '';
+                const cB = partsB[partsB.length - 1] || '';
                 return cA.localeCompare(cB);
             }
 

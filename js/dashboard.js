@@ -310,6 +310,8 @@ class DashboardManager {
             this.renderPivotCurrency(filteredData);
         } else if (this.currentView === 'dash-school') {
             this.renderPivotSchoolDetailed(filteredData);
+        } else if (this.currentView === 'dash-counsellor') {
+            this.renderPivotCounsellor(filteredData);
         } else if (this.currentView === 'dash-bonus') {
             this.renderBonusKPIs(filteredData);
             this.renderBonusByStatus(filteredData);
@@ -423,6 +425,30 @@ class DashboardManager {
         }
 
         return (rate && totalComm) ? (totalComm / rate) : 0;
+    }
+
+    calculateNetComm(row) {
+        const csvCalc = this.getNumericValue(row, 'Comm') + this.getNumericValue(row, 'Cancellation') - this.getNumericValue(row, 'Discount') - this.getNumericValue(row, 'Represantative Comm');
+        const manualComm = this.getTrackingNumber(row, 'manual_net_commission');
+        return csvCalc !== 0 ? csvCalc : manualComm;
+    }
+
+    calculateRemainingBonus(row) {
+        const trackingRemaining = this.getTrackingNumber(row, 'remaining_bonus');
+        if (trackingRemaining !== 0) return trackingRemaining;
+        return (this.calculateNetComm(row) * 0.15) - this.getTrackingNumber(row, 'deposit_bonus') - this.getTrackingNumber(row, 'consultant_bonus');
+    }
+
+    getNumericValue(row, field) {
+        const value = row[field];
+        if (value === null || value === undefined || value === '') return 0;
+        return typeof value === 'string' ? parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0 : value;
+    }
+
+    getTrackingNumber(row, field) {
+        const value = row._tracking?.[field];
+        if (value === null || value === undefined || value === '') return 0;
+        return typeof value === 'string' ? parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0 : value;
     }
 
     renderBonusKPIs(data) {
@@ -831,30 +857,203 @@ class DashboardManager {
     }
 
     renderPivotCounsellor(data) {
-        // Counsellor usually maps to 'Representative' field or similar; checking field map
-        const field = 'Represantative'; 
-        const groups = this.groupBy(data, field);
-        const rows = Object.entries(groups).map(([key, items]) => ({
-            group: key || '(Belirtilmemiş)',
-            count: items.length,
-            tuition: this.sumField(items, 'Tuition'),
-            paid: this.sumField(items, 'Paid'),
-            balance: this.sumField(items, 'Balance')
-        })).sort((a, b) => b.count - a.count);
+        const groups = {};
 
-        const totals = {
-            count: rows.reduce((s, r) => s + r.count, 0),
-            tuition: rows.reduce((s, r) => s + r.tuition, 0),
-            paid: rows.reduce((s, r) => s + r.paid, 0),
-            balance: rows.reduce((s, r) => s + r.balance, 0)
-        };
+        data.forEach(row => {
+            const counsellor = row['Employee'] || row['Represantative'] || '(Belirtilmemiş)';
+            const currency = row['Currency'] || '(Boş)';
+            const key = `${counsellor}|||${currency}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    counsellor,
+                    currency,
+                    count: 0,
+                    usdComm: 0,
+                    depositTotal: 0,
+                    depositHakedis: 0,
+                    depositOdendi: 0,
+                    consultantTotal: 0,
+                    consultantHakedis: 0,
+                    consultantOdendi: 0,
+                    remainingBonus: 0,
+                    items: []
+                };
+            }
 
-        document.getElementById('pivot-counsellor').innerHTML = this.buildPivotTable(
-            ['Counsellor', 'Kayıt', 'Tuition', 'Paid', 'Balance'],
-            rows.map(r => [r.group, r.count, formatNumber(r.tuition), formatNumber(r.paid), formatNumber(r.balance)]),
-            ['Toplam', totals.count, formatNumber(totals.tuition), formatNumber(totals.paid), formatNumber(totals.balance)],
-            [false, false, true, true, true]
+            const group = groups[key];
+            const tracking = row._tracking || {};
+            const depositBonus = this.getTrackingNumber(row, 'deposit_bonus');
+            const consultantBonus = this.getTrackingNumber(row, 'consultant_bonus');
+
+            group.count++;
+            group.items.push(row);
+            group.usdComm += this.calculateUsdComm(row);
+            group.depositTotal += depositBonus;
+            group.consultantTotal += consultantBonus;
+            group.remainingBonus += this.calculateRemainingBonus(row);
+
+            if (tracking.deposit_bonus_status === 'Hakediş') group.depositHakedis += depositBonus;
+            if (tracking.deposit_bonus_status === 'Ödendi') group.depositOdendi += depositBonus;
+            if (tracking.consultant_bonus_status === 'Hakediş') group.consultantHakedis += consultantBonus;
+            if (tracking.consultant_bonus_status === 'Ödendi') group.consultantOdendi += consultantBonus;
+        });
+
+        const rows = Object.values(groups).sort((a, b) => {
+            const byCounsellor = a.counsellor.localeCompare(b.counsellor, 'tr');
+            return byCounsellor || a.currency.localeCompare(b.currency, 'tr');
+        });
+
+        const totals = rows.reduce((acc, row) => {
+            Object.keys(acc).forEach(key => acc[key] += row[key] || 0);
+            return acc;
+        }, {
+            count: 0,
+            usdComm: 0,
+            depositTotal: 0,
+            depositHakedis: 0,
+            depositOdendi: 0,
+            consultantTotal: 0,
+            consultantHakedis: 0,
+            consultantOdendi: 0,
+            remainingBonus: 0
+        });
+
+        const container = document.getElementById('pivot-counsellor');
+        container.style.maxHeight = 'none';
+        container.style.overflow = 'auto';
+        const tableHtml = this.buildPivotTable(
+            [
+                'Counsellor', 'Kur', 'Kayıt', 'USD Net Komisyon',
+                'Toplam Depozito Primi', 'Depozito Hakediş', 'Depozito Ödendi',
+                'Toplam Danışman Primi', 'Danışman Hakediş', 'Danışman Ödendi',
+                'Toplam Kalan Prim', 'Öğrenciler'
+            ],
+            rows.map((r, idx) => [
+                r.counsellor,
+                this.escapeHtml(r.currency),
+                r.count,
+                formatNumber(r.usdComm),
+                formatNumber(r.depositTotal),
+                formatNumber(r.depositHakedis),
+                formatNumber(r.depositOdendi),
+                formatNumber(r.consultantTotal),
+                formatNumber(r.consultantHakedis),
+                formatNumber(r.consultantOdendi),
+                formatNumber(r.remainingBonus),
+                `<button type="button" class="btn btn-outline btn-sm btn-counsellor-students" data-group-index="${idx}">Öğrenci Göster</button>`
+            ]),
+            [
+                'Toplam', '', totals.count, formatNumber(totals.usdComm),
+                formatNumber(totals.depositTotal), formatNumber(totals.depositHakedis), formatNumber(totals.depositOdendi),
+                formatNumber(totals.consultantTotal), formatNumber(totals.consultantHakedis), formatNumber(totals.consultantOdendi),
+                formatNumber(totals.remainingBonus), ''
+            ],
+            [false, false, false, true, true, true, true, true, true, true, true, false]
         );
+
+        container.innerHTML = `
+            <div class="counsellor-report-actions">
+                <div>
+                    <strong>Ekran Raporu</strong>
+                    <span>${totals.count} öğrenci, ${rows.length} Counsellor/Kur grubu</span>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-all-counsellor-students">Tüm Öğrencileri Göster</button>
+            </div>
+            ${tableHtml}
+        `;
+
+        const allStudentsBtn = container.querySelector('#btn-all-counsellor-students');
+        if (allStudentsBtn) {
+            allStudentsBtn.addEventListener('click', () => {
+                this.renderCounsellorStudentList({
+                    counsellor: 'Tüm Counsellorlar',
+                    currency: 'Tüm Kurlar',
+                    items: data
+                });
+            });
+        }
+
+        container.querySelectorAll('.btn-counsellor-students').forEach(btn => {
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const group = rows[parseInt(btn.dataset.groupIndex, 10)];
+                if (group) this.renderCounsellorStudentList(group);
+            });
+        });
+    }
+
+    renderCounsellorStudentList(group) {
+        const students = [...group.items].sort((a, b) => {
+            const currencyCompare = String(a['Currency'] || '').localeCompare(String(b['Currency'] || ''), 'tr');
+            if (currencyCompare !== 0) return currencyCompare;
+
+            const depositCompare = String(a._tracking?.deposit_bonus_status || '').localeCompare(String(b._tracking?.deposit_bonus_status || ''), 'tr');
+            if (depositCompare !== 0) return depositCompare;
+
+            return `${a['Name'] || ''} ${a['Surname'] || ''}`.trim().localeCompare(`${b['Name'] || ''} ${b['Surname'] || ''}`.trim(), 'tr');
+        });
+        const reportDate = new Date().toLocaleDateString('tr-TR');
+
+        const rows = students.map(row => {
+            const tracking = row._tracking || {};
+            return [
+                `${row['Name'] || ''} ${row['Surname'] || ''}`.trim() || '(İsimsiz)',
+                this.escapeHtml(row['School'] || ''),
+                this.escapeHtml(row['Currency'] || ''),
+                this.escapeHtml(tracking.status || 'Boş'),
+                formatNumber(this.calculateUsdComm(row)),
+                formatNumber(this.getTrackingNumber(row, 'deposit_bonus')),
+                this.escapeHtml(tracking.deposit_bonus_status || ''),
+                formatNumber(this.getTrackingNumber(row, 'consultant_bonus')),
+                this.escapeHtml(tracking.consultant_bonus_status || ''),
+                formatNumber(this.calculateRemainingBonus(row))
+            ];
+        });
+
+        const totals = students.reduce((acc, row) => {
+            acc.usdComm += this.calculateUsdComm(row);
+            acc.depositBonus += this.getTrackingNumber(row, 'deposit_bonus');
+            acc.consultantBonus += this.getTrackingNumber(row, 'consultant_bonus');
+            acc.remainingBonus += this.calculateRemainingBonus(row);
+            return acc;
+        }, { usdComm: 0, depositBonus: 0, consultantBonus: 0, remainingBonus: 0 });
+
+        const modal = document.createElement('div');
+        modal.className = 'drill-down-modal report-print-modal';
+        modal.innerHTML = `
+            <div class="drill-down-content drill-down-content-wide">
+                <div class="drill-down-header">
+                    <div>
+                        <h3>${this.escapeHtml(group.counsellor)} - ${this.escapeHtml(group.currency)} Öğrenci Listesi</h3>
+                        <div class="report-date">Rapor Tarihi: ${reportDate}</div>
+                    </div>
+                    <div class="report-actions no-print">
+                        <button type="button" class="btn btn-primary btn-sm btn-print-report">PDF Olarak Çıktı Al</button>
+                        <button class="btn-close-drilldown">&times;</button>
+                    </div>
+                </div>
+                <div class="print-report-title">
+                    <h2>${this.escapeHtml(group.counsellor)} - ${this.escapeHtml(group.currency)} Öğrenci Listesi</h2>
+                    <div>Rapor Tarihi: ${reportDate}</div>
+                </div>
+                <div class="drill-down-body report-print-body">
+                    ${this.buildPivotTable(
+                        ['Öğrenci', 'Okul', 'Kur', 'Ödeme Durumu', 'USD Net Komisyon', 'Depozito Primi', 'Depozito Durumu', 'Danışman Primi', 'Danışman Durumu', 'Kalan Prim'],
+                        rows,
+                        ['Toplam', '', '', '', formatNumber(totals.usdComm), formatNumber(totals.depositBonus), '', formatNumber(totals.consultantBonus), '', formatNumber(totals.remainingBonus)],
+                        [false, false, false, false, true, true, false, true, false, true]
+                    )}
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.querySelector('.btn-print-report').addEventListener('click', () => window.print());
+        modal.querySelector('.btn-close-drilldown').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     renderPivotSchoolDetailed(data) {

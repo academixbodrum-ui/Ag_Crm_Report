@@ -233,6 +233,27 @@
     overflow-y: auto;
 }
 
+.counsellor-report-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-tertiary);
+}
+
+.counsellor-report-actions div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.counsellor-report-actions span {
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+}
+
 .pivot-table {
     width: 100%;
     border-collapse: collapse;
@@ -383,6 +404,10 @@
     animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.drill-down-content-wide {
+    max-width: 1200px;
+}
+
 .drill-down-header {
     padding: 20px 24px;
     border-bottom: 1px solid var(--border-primary);
@@ -395,6 +420,22 @@
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
+}
+
+.report-date {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.print-report-title {
+    display: none;
 }
 
 .btn-close-drilldown {
@@ -425,4 +466,69 @@
 @keyframes slideUpModal {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+@media print {
+    body > *:not(.report-print-modal) {
+        display: none !important;
+    }
+
+    .report-print-modal {
+        position: static !important;
+        display: block !important;
+        background: #ffffff !important;
+        backdrop-filter: none !important;
+    }
+
+    .report-print-modal .drill-down-content {
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        overflow: visible !important;
+    }
+
+    .report-print-modal .drill-down-header,
+    .report-print-modal .no-print {
+        display: none !important;
+    }
+
+    .report-print-modal .print-report-title {
+        display: block !important;
+        padding: 0 0 12px 0;
+        color: #000000 !important;
+    }
+
+    .report-print-modal .print-report-title h2 {
+        margin: 0 0 4px 0;
+        font-size: 18px;
+    }
+
+    .report-print-modal .drill-down-body {
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    .report-print-modal .pivot-table-container,
+    .report-print-modal .pivot-table {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .report-print-modal .pivot-table th,
+    .report-print-modal .pivot-table td {
+        color: #000000 !important;
+        background: #ffffff !important;
+        border: 1px solid #cccccc !important;
+        padding: 6px 8px !important;
+        font-size: 10px !important;
+    }
+
+    .report-print-modal .pivot-table tfoot td {
+        font-weight: 700 !important;
+        background: #f2f2f2 !important;
+    }
 }

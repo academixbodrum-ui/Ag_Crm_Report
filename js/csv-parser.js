@@ -197,6 +197,21 @@ function generateRowUID(row) {
     return `${name}|${surname}|${recordDateStr}`;
 }
 
+function normalizeUIDPart(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function generateDetailedRowUID(row) {
+    return [
+        generateRowUID(row),
+        normalizeUIDPart(row['School']),
+        normalizeUIDPart(row['School Center']),
+        normalizeUIDPart(row['Branch']),
+        normalizeUIDPart(row['Program']),
+        normalizeUIDPart(row['Program Start Date'] ? formatDateDisplay(row['Program Start Date']) : '')
+    ].join('|');
+}
+
 /**
  * Generate a SHA-1 hash of the row content for change detection
  */
@@ -296,15 +311,22 @@ async function processCSVFile(file, onProgress) {
     const uploadId = generateUUID();
     const uploadedAt = new Date().toISOString();
     const processedRows = [];
+    const normalizedRows = rawRows.map(row => normalizeRow(row));
+    const baseUidCounts = {};
+    normalizedRows.forEach(row => {
+        const baseUid = generateRowUID(row);
+        baseUidCounts[baseUid] = (baseUidCounts[baseUid] || 0) + 1;
+    });
 
     // Track UID occurrences to guarantee uniqueness
     const uidCounts = {};
 
-    for (let i = 0; i < rawRows.length; i++) {
-        const normalized = normalizeRow(rawRows[i]);
-        let baseUid = generateRowUID(normalized);
+    for (let i = 0; i < normalizedRows.length; i++) {
+        const normalized = normalizedRows[i];
+        const simpleUid = generateRowUID(normalized);
+        const baseUid = baseUidCounts[simpleUid] > 1 ? generateDetailedRowUID(normalized) : simpleUid;
 
-        // Increment counter for this base UID (Name + Surname + Record Date)
+        // Increment counter for this identity to protect truly duplicate rows.
         if (uidCounts[baseUid] === undefined) {
             uidCounts[baseUid] = 1;
         } else {
